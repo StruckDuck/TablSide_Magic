@@ -203,13 +203,6 @@
 </div>
 <div class="collapse-panel" id="settings-panel">
   <div class="setting-row">
-    <div class="setting-label">Timer delay</div>
-    <div style="display:flex;align-items:center;gap:0.5rem;">
-      <input type="range" id="timer-range" min="1" max="10" value="3" step="1">
-      <div class="setting-value" id="timer-display">3 min</div>
-    </div>
-  </div>
-  <div class="setting-row">
     <div class="setting-label">Alert sound</div>
     <select id="alert-select">
       <option value="chime">Chime</option>
@@ -299,7 +292,6 @@
 
   // ─── STATE ──────────────────────────────────────────────────────────────────
   var settings = {
-    timer: parseInt(localStorage.getItem('timer') || '3'),
     alert: localStorage.getItem('alert') || 'chime',
     activeVenue: localStorage.getItem('activeVenue') || null
   };
@@ -361,23 +353,11 @@
   // since it recalculates from startedAt each time
 
   // ─── SETTINGS ───────────────────────────────────────────────────────────────
-  document.getElementById('timer-range').value = settings.timer;
-  document.getElementById('timer-display').textContent = settings.timer + ' min';
   document.getElementById('alert-select').value = settings.alert;
 
-  document.getElementById('timer-range').addEventListener('input', function() {
-    document.getElementById('timer-display').textContent = this.value + ' min';
-  });
-
   document.getElementById('save-settings-btn').addEventListener('click', function() {
-    settings.timer = parseInt(document.getElementById('timer-range').value);
     settings.alert = document.getElementById('alert-select').value;
-    localStorage.setItem('timer', settings.timer);
     localStorage.setItem('alert', settings.alert);
-    if (settings.activeVenue) {
-      db.collection('venueConfigs').doc(settings.activeVenue)
-        .set({ timerMins: settings.timer }, { merge: true }).catch(function() {});
-    }
     showSaved('settings-saved');
   });
 
@@ -601,7 +581,7 @@
         colors: {},
         links: [],
         mapUrls: [],
-        timerMins: 3,
+        timerMins: TIMER_MINS,
         createdAt: FS.serverTimestamp()
       }).then(function() {
         var v = { name: name, slug: id, mapUrls: [], colors: {}, links: [], tables: tableNums };
@@ -631,13 +611,13 @@
       activeMapIndex = 0;
       renderMapViewer();
     }
-    db.collection('venueConfigs').doc(s).set({ timerMins: settings.timer }, { merge: true }).catch(function() {});
     closeVenueModal();
     subscribeToVenue();
     loadStats();
   }
 
   var MAX_LINKS = 6;
+  var TIMER_MINS = 5;
 
   function escapeAttr(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -1079,7 +1059,7 @@
       // Restore countdown bar if page was reloaded mid-performance
       if (data.onMyWayAt && !countdownInterval) {
         var startedAt = data.onMyWayAt.toMillis();
-        var timerMs = (data.timerMins || settings.timer) * 60 * 1000;
+        var timerMs = (data.timerMins || TIMER_MINS) * 60 * 1000;
         if (Date.now() - startedAt < timerMs) {
           document.getElementById('heading-bar').style.display = 'flex';
           document.getElementById('heading-bar-table').textContent = label;
@@ -1157,16 +1137,13 @@
         var id = this.dataset.id;
         var lbl = this.dataset.label;
         var requestedAt = this.dataset.requested ? parseInt(this.dataset.requested) : null;
-        // Always read current slider value so no save required
-        settings.timer = parseInt(document.getElementById('timer-range').value);
-        localStorage.setItem('timer', settings.timer);
-        var timerMs = settings.timer * 60 * 1000;
+        var timerMs = TIMER_MINS * 60 * 1000;
 
         headingToId = id;
 
         // Write to Firebase — diner page reads onMyWayAt and handles its own transition
         db.collection('venues').doc(settings.activeVenue).collection('tables').doc(id)
-          .update({ status: 'on_my_way', onMyWayAt: FS.serverTimestamp(), timerMins: settings.timer });
+          .update({ status: 'on_my_way', onMyWayAt: FS.serverTimestamp(), timerMins: TIMER_MINS });
 
         logEvent('performance', id.replace('table_', ''), requestedAt);
 
