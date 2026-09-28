@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<title>Admin — Tablside</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400&family=Raleway:wght@300;400;500;600&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#f4f2ee; --surface:#fff; --surface2:#ede9e2; --border:#d6d0c6;
+    --text:#1a1612; --muted:#8a8278; --gold:#7a6545; --teal:#273534;
+    --plum:#6f0f43; --red:#a01a1a;
+  }
+  body { font-family:'Raleway',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:1.25rem 1rem 3rem; max-width:500px; margin:0 auto; }
+
+  /* HEADER */
+  .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+  .header-title { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:400; color:var(--teal); letter-spacing:0.15em; text-transform:uppercase; }
+  .venue-badge { font-size:0.65rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); background:var(--surface2); border:1px solid var(--border); padding:4px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+
+  /* MAP */
+  .map-container { width:100%; background:var(--surface2); border:1px solid var(--border); min-height:80px; position:relative; overflow:hidden; margin-bottom:1.25rem; cursor:pointer; }
+  .map-container img { width:100%; height:auto; display:block; }
+  .map-placeholder { display:flex; align-items:center; justify-content:center; min-height:80px; padding:2rem; }
+  .map-placeholder-text { font-size:0.68rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; text-align:center; }
+  .map-change-btn { position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; padding:4px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+
+  /* HEADING TO BAR */
+  .heading-bar { display:none; background:var(--plum); padding:0.85rem 1rem; margin-bottom:1.25rem; flex-direction:row; align-items:center; justify-content:space-between; }
+  .heading-bar-label { font-size:0.6rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,255,255,0.6); margin-bottom:0.2rem; }
+  .heading-bar-table { font-family:'Cormorant Garamond',serif; font-size:1.2rem; color:#fff; }
+  .heading-bar-timer { font-size:0.6rem; color:rgba(255,255,255,0.5); letter-spacing:0.1em; text-transform:uppercase; }
+
+  /* QUEUE */
+  .queue-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem; }
+  .queue-label { font-size:0.65rem; font-weight:500; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; }
+  .queue-count { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:600; background:var(--plum); color:#fff; }
+  .queue-count.empty { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+  .queue-list { width:100%; border:1px solid var(--border); background:var(--surface); margin-bottom:0.5rem; overflow:hidden; }
+  .queue-empty { padding:1.5rem; text-align:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.9rem; color:var(--muted); }
+  .queue-entry { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem; border-bottom:1px solid var(--border); }
+  .queue-entry:last-child { border-bottom:none; }
+  .queue-entry.is-top { background:#faf8f4; }
+  .entry-left { display:flex; flex-direction:column; gap:0.15rem; }
+  .entry-name { font-size:0.88rem; font-weight:600; color:var(--text); }
+  .entry-name.scan { font-weight:400; color:var(--muted); }
+  .entry-wait { font-size:0.6rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; }
+  .on-my-way-btn { background:var(--plum); border:none; color:#fff; font-family:'Raleway',sans-serif; font-size:0.6rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; padding:0.5rem 0.9rem; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; min-height:36px; }
+  .cancel-notices { margin-bottom:1rem; display:flex; flex-direction:column; gap:4px; }
+  .cancel-notice { font-size:0.65rem; color:var(--red); letter-spacing:0.1em; text-transform:uppercase; padding:0.5rem 0.75rem; background:#fff5f5; border:1px solid #f5c0c0; transition:opacity 0.5s; }
+
+  /* COLLAPSIBLE */
+  .collapse-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem; background:var(--surface); border:1px solid var(--border); cursor:pointer; font-family:'Raleway',sans-serif; margin-bottom:1px; -webkit-tap-highlight-color:transparent; }
+  .collapse-label { font-size:0.65rem; font-weight:500; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; pointer-events:none; }
+  .collapse-arrow { font-size:0.7rem; color:var(--muted); transition:transform 0.2s; pointer-events:none; }
+  .collapse-arrow.open { transform:rotate(180deg); }
+  .collapse-panel { display:none; background:var(--surface); border:1px solid var(--border); border-top:none; margin-bottom:1rem; }
+  .collapse-panel.open { display:block; }
+
+  /* STATS */
+  .stats-tabs { display:flex; border-bottom:1px solid var(--border); }
+  .stats-tab { flex:1; padding:0.6rem; font-size:0.62rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; text-align:center; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; -webkit-tap-highlight-color:transparent; }
+  .stats-tab.active { color:var(--teal); border-bottom-color:var(--teal); }
+  .month-row { display:none; padding:0.6rem 1rem; border-bottom:1px solid var(--border); }
+  .month-row.visible { display:block; }
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; padding:1rem; }
+  .stat-card { background:var(--surface2); border:1px solid var(--border); padding:0.75rem; display:flex; flex-direction:column; gap:0.25rem; }
+  .stat-value { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:400; color:var(--teal); line-height:1; }
+  .stat-label { font-size:0.6rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; line-height:1.4; }
+
+  /* SETTINGS */
+  .setting-row { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem; border-bottom:1px solid var(--border); }
+  .setting-row:last-of-type { border-bottom:none; }
+  .setting-label { font-size:0.7rem; color:var(--muted); letter-spacing:0.08em; }
+  .setting-value { font-size:0.7rem; color:var(--gold); min-width:36px; text-align:right; }
+  input[type=range] { -webkit-appearance:none; width:90px; height:2px; background:var(--border); outline:none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--teal); cursor:pointer; }
+  select { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.68rem; padding:4px 8px; outline:none; cursor:pointer; }
+  .action-btn { width:calc(100% - 2rem); margin:1rem; padding:0.75rem; background:transparent; border:1px solid var(--teal); color:var(--teal); font-family:'Raleway',sans-serif; font-size:0.68rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .saved-msg { text-align:center; font-size:0.62rem; color:#2a6a2a; letter-spacing:0.1em; text-transform:uppercase; padding:0 1rem 0.75rem; opacity:0; transition:opacity 0.3s; }
+  .saved-msg.show { opacity:1; }
+
+  /* MODAL */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center; padding:1rem; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); width:100%; max-width:400px; max-height:85vh; overflow-y:auto; }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; padding:1rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface); z-index:1; }
+  .modal-title { font-size:0.7rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); }
+  .modal-close { background:none; border:none; font-size:1.4rem; color:var(--muted); cursor:pointer; padding:0 4px; -webkit-tap-highlight-color:transparent; }
+  .venue-list { padding:0.5rem 0; }
+  .venue-item { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-bottom:1px solid var(--border); }
+  .venue-item:last-child { border-bottom:none; }
+  .venue-item.active { background:#f0f8f0; }
+  .venue-item-name { font-size:0.82rem; font-weight:500; color:var(--text); }
+  .venue-item-active-label { font-size:0.6rem; color:#2a6a2a; letter-spacing:0.1em; text-transform:uppercase; }
+  .venue-actions { display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .venue-btn { background:none; border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.58rem; letter-spacing:0.08em; text-transform:uppercase; padding:5px 8px; cursor:pointer; white-space:nowrap; -webkit-tap-highlight-color:transparent; min-height:32px; }
+  .venue-btn.primary { color:var(--teal); border-color:var(--teal); }
+  .venue-btn.danger { color:var(--red); border-color:var(--red); }
+  .add-venue-form { padding:1rem; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:0.6rem; }
+  .form-label { font-size:0.62rem; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+  .text-field { width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.78rem; padding:10px; outline:none; }
+  .file-label { display:flex; align-items:center; gap:0.5rem; padding:0.6rem 0.75rem; background:var(--surface2); border:1px solid var(--border); cursor:pointer; font-size:0.68rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; min-height:40px; }
+  .file-label.ready { border-color:var(--teal); color:var(--teal); }
+  .primary-btn { padding:0.85rem; background:var(--teal); border:none; color:#fff; font-family:'Raleway',sans-serif; font-size:0.68rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; min-height:44px; -webkit-tap-highlight-color:transparent; }
+
+  /* CUSTOMIZE */
+  .customize-form { padding:1rem; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:0; }
+  .customize-title { font-size:0.62rem; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.75rem; }
+  .color-row { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1rem; border-bottom:1px solid var(--border); gap:0.5rem; }
+  .color-row:last-of-type { border-bottom:none; }
+  .color-inputs { display:flex; align-items:center; gap:0.5rem; }
+  input[type=color] { width:32px; height:28px; border:1px solid var(--border); padding:2px; cursor:pointer; background:none; }
+  .hex-input { width:80px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.68rem; padding:4px 6px; outline:none; }
+  .short-input { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.68rem; padding:5px 8px; outline:none; width:160px; }
+  body.pending { visibility:hidden; }
+</style>
+</head>
+<body class="pending">
+
+<div class="header">
+  <div class="header-title">Tonight</div>
+  <div class="venue-badge" id="venue-badge">No venue selected</div>
+</div>
+
+<div class="map-container" id="map-container">
+  <div class="map-placeholder"><div class="map-placeholder-text">Select a venue to load floor plan</div></div>
+</div>
+
+<div class="heading-bar" id="heading-bar">
+  <div>
+    <div class="heading-bar-label">Heading to</div>
+    <div class="heading-bar-table" id="heading-bar-table">—</div>
+  </div>
+  <div class="heading-bar-timer" id="heading-bar-timer"></div>
+</div>
+
+<div class="queue-header">
+  <div class="queue-label">Queue</div>
+  <div class="queue-count empty" id="queue-count">0</div>
+</div>
+<div class="queue-list" id="queue-list"><div class="queue-empty">No activity yet.</div></div>
+<div class="cancel-notices" id="cancel-notices"></div>
+
+<button id="end-night-btn" style="display:block;width:100%;padding:0.75rem;background:transparent;border:1px solid #b0a898;color:#6b5f52;font-family:'Raleway',sans-serif;font-size:0.65rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:1.5rem;">End Night</button>
+
+<div class="collapse-toggle" id="stats-toggle">
+  <div class="collapse-label">Stats</div>
+  <div class="collapse-arrow" id="stats-arrow">▼</div>
+</div>
+<div class="collapse-panel" id="stats-panel">
+  <div class="stats-tabs">
+    <div class="stats-tab active" id="tab-tonight">Tonight</div>
+    <div class="stats-tab" id="tab-month">By Month</div>
+    <div class="stats-tab" id="tab-alltime">All Time</div>
+  </div>
+  <div class="month-row" id="month-row"><select id="month-select"></select></div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-value" id="stat-performances">0</div><div class="stat-label">Tables performed</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-conversion">—</div><div class="stat-label">Scan to request rate</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-cancellations">0</div><div class="stat-label">Cancellations</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-avg-wait">—</div><div class="stat-label">Avg wait time</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-total-scans">0</div><div class="stat-label">Total scans</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-peak">—</div><div class="stat-label">Peak request hour</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-returning">—</div><div class="stat-label">Return visitor rate</div></div>
+  </div>
+  <div id="table-breakdown" style="display:none;padding:0 1rem 1rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div>
+        <div style="font-size:0.6rem;font-weight:500;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Most Active</div>
+        <div id="top-tables"></div>
+      </div>
+      <div>
+        <div style="font-size:0.6rem;font-weight:500;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Least Active</div>
+        <div id="bottom-tables"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="collapse-toggle" id="settings-toggle">
+  <div class="collapse-label">Settings</div>
+  <div class="collapse-arrow" id="settings-arrow">▼</div>
+</div>
+<div class="collapse-panel" id="settings-panel">
+  <div class="setting-row">
+    <div class="setting-label">Timer delay</div>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <input type="range" id="timer-range" min="1" max="10" value="3" step="1">
+      <div class="setting-value" id="timer-display">3 min</div>
+    </div>
+  </div>
+  <div class="setting-row">
+    <div class="setting-label">Alert sound</div>
+    <select id="alert-select">
+      <option value="chime">Chime</option>
+      <option value="double">Double tap</option>
+      <option value="vibrate">Vibrate only</option>
+      <option value="both">Chime + vibrate</option>
+      <option value="off">Off</option>
+    </select>
+  </div>
+  <button class="action-btn" id="save-settings-btn">Save Settings</button>
+  <div class="saved-msg" id="settings-saved">Settings saved</div>
+  <div class="setting-row"><div class="setting-label" id="account-email">Account</div><button class="venue-btn" id="signout-btn">Sign out</button></div>
+</div>
+
+<div class="modal-overlay" id="venue-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Venues</div>
+      <button class="modal-close" id="modal-close-btn">×</button>
+    </div>
+    <div class="venue-list" id="venue-list"></div>
+    <div class="add-venue-form" id="add-venue-form">
+      <div class="form-label">Add new venue</div>
+      <input type="text" class="text-field" id="new-venue-name" placeholder="Venue name (e.g. Lady Slipper)">
+      <label class="file-label" id="map-upload-label">
+        <span id="map-upload-text">+ Upload floor plan</span>
+        <input type="file" id="map-upload-input" accept="image/*" style="display:none;">
+      </label>
+      <div class="form-label" style="margin-top:0.25rem;">Table numbers</div>
+      <textarea class="text-field" id="new-venue-tables" placeholder="e.g. 1,2,3,4,5,10,20,21,22" rows="2" style="resize:none;overflow:hidden;line-height:1.6;font-size:0.78rem;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+      <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;margin-top:-0.25rem;">Comma-separated. Used for QR code generation.</div>
+      <button class="primary-btn" id="add-venue-btn">Add Venue</button>
+    </div>
+    <div class="customize-form" id="customize-form" style="display:none;">
+      <div class="customize-title" id="customize-title">Customize</div>
+      <div class="color-row"><div class="setting-label">Background</div><div class="color-inputs"><input type="color" id="c-bg-p" value="#26060f"><input type="text" class="hex-input" id="c-bg-h" value="#26060f" maxlength="7"></div></div>
+      <div class="color-row"><div class="setting-label">Box color</div><div class="color-inputs"><input type="color" id="c-box-p" value="#273534"><input type="text" class="hex-input" id="c-box-h" value="#273534" maxlength="7"></div></div>
+      <div class="color-row"><div class="setting-label">Accent color</div><div class="color-inputs"><input type="color" id="c-accent-p" value="#6f0f43"><input type="text" class="hex-input" id="c-accent-h" value="#6f0f43" maxlength="7"></div></div>
+      <div class="color-row"><div class="setting-label">Highlight color</div><div class="color-inputs"><input type="color" id="c-highlight-p" value="#927b52"><input type="text" class="hex-input" id="c-highlight-h" value="#927b52" maxlength="7"></div></div>
+      <div class="color-row"><div class="setting-label">Text color</div><div class="color-inputs"><input type="color" id="c-text-p" value="#eae9d6"><input type="text" class="hex-input" id="c-text-h" value="#eae9d6" maxlength="7"></div></div>
+      <div class="color-row"><div class="setting-label">Muted text</div><div class="color-inputs"><input type="color" id="c-muted-p" value="#9aab9a"><input type="text" class="hex-input" id="c-muted-h" value="#9aab9a" maxlength="7"></div></div>
+      <div class="color-row"><div class="setting-label">Venue link label</div><input type="text" class="short-input" id="c-link-label" placeholder="More evenings here"></div>
+      <div class="color-row"><div class="setting-label">Venue link URL</div><input type="text" class="short-input" id="c-link-url" placeholder="https://..."></div>
+      <div class="color-row" style="border-bottom:none;"><div class="setting-label">Stats page password</div><input type="text" class="short-input" id="c-password" placeholder="Set a password"></div>
+      <div class="color-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem;">
+        <div class="setting-label">Table numbers</div>
+        <textarea class="short-input" id="c-tables" placeholder="1,2,3,4,5,10,20,21" rows="2" style="width:100%;resize:none;overflow:hidden;line-height:1.6;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        <div style="font-size:0.58rem;color:var(--muted);letter-spacing:0.08em;">Comma-separated list for QR code generation</div>
+      </div>
+      <button class="primary-btn" style="margin-top:0.75rem;" id="save-config-btn">Save Appearance</button>
+      <div class="saved-msg" id="config-saved">Appearance saved</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── FIREBASE ───────────────────────────────────────────────────────────────
+  firebase.initializeApp({
+    apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
+    authDomain: "tablside-magic.firebaseapp.com",
+    projectId: "tablside-magic",
+    storageBucket: "tablside-magic.firebasestorage.app",
+    messagingSenderId: "209355723420",
+    appId: "1:209355723420:web:c4bf8aeab08cc425135359"
+  });
+  var db = firebase.firestore();
+  var FS = firebase.firestore.FieldValue;
+
+  // ─── STATE ──────────────────────────────────────────────────────────────────
+  var settings = {
+    timer: parseInt(localStorage.getItem('timer') || '3'),
+    alert: localStorage.getItem('alert') || 'chime',
+    activeVenue: localStorage.getItem('activeVenue') || null
+  };
+  var venues = [];
+  var entries = [];
+  var unsubscribe = null;
+  var currentTab = 'tonight';
+  var customizeSlug = null;
+  var newMapData = null;
+
+  // ─── HELPERS ────────────────────────────────────────────────────────────────
+  function slug(name) { return name.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  function fmtTime(ms) {
+    var m = Math.floor(ms / 60000);
+    var s = Math.floor((ms % 60000) / 1000);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function showSaved(id) {
+    var el = document.getElementById(id);
+    el.classList.add('show');
+    setTimeout(function() { el.classList.remove('show'); }, 2000);
+  }
+
+  // ─── COUNTDOWN ──────────────────────────────────────────────────────────────
+  // No timers — just polls Firebase timestamp every second.
+  // Survives phone lock, page reload, anything.
+  var countdownInterval = null;
+  var headingToId = null;
+
+  function startCountdown(startedAt, timerMs) {
+    stopCountdown();
+    countdownInterval = setInterval(function() {
+      var remaining = Math.max(0, timerMs - (Date.now() - startedAt));
+      if (remaining === 0) {
+        stopCountdown();
+        headingToId = null;
+        document.getElementById('heading-bar').style.display = 'none';
+        return;
+      }
+      document.getElementById('heading-bar-timer').textContent = fmtTime(remaining) + ' remaining';
+    }, 500);
+    // Show immediately
+    var rem = Math.max(0, timerMs - (Date.now() - startedAt));
+    document.getElementById('heading-bar-timer').textContent = fmtTime(rem) + ' remaining';
+  }
+
+  function stopCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+
+  // On visibility change, the interval will naturally correct itself on next tick
+  // since it recalculates from startedAt each time
+
+  // ─── SETTINGS ───────────────────────────────────────────────────────────────
+  document.getElementById('timer-range').value = settings.timer;
+  document.getElementById('timer-display').textContent = settings.timer + ' min';
+  document.getElementById('alert-select').value = settings.alert;
+
+  document.getElementById('timer-range').addEventListener('input', function() {
+    document.getElementById('timer-display').textContent = this.value + ' min';
+  });
+
+  document.getElementById('save-settings-btn').addEventListener('click', function() {
+    settings.timer = parseInt(document.getElementById('timer-range').value);
+    settings.alert = document.getElementById('alert-select').value;
+    localStorage.setItem('timer', settings.timer);
+    localStorage.setItem('alert', settings.alert);
+    if (settings.activeVenue) {
+      db.collection('venueConfigs').doc(settings.activeVenue)
+        .set({ timerMins: settings.timer }, { merge: true }).catch(function() {});
+    }
+    showSaved('settings-saved');
+  });
+
+  // ─── STATS ──────────────────────────────────────────────────────────────────
+  document.getElementById('stats-toggle').addEventListener('click', function() {
+    document.getElementById('stats-panel').classList.toggle('open');
+    document.getElementById('stats-arrow').classList.toggle('open');
+    if (document.getElementById('stats-panel').classList.contains('open')) loadStats();
+  });
+
+  document.getElementById('settings-toggle').addEventListener('click', function() {
+    document.getElementById('settings-panel').classList.toggle('open');
+    document.getElementById('settings-arrow').classList.toggle('open');
+  });
+
+  document.getElementById('tab-tonight').addEventListener('click', function() { switchTab('tonight'); });
+  document.getElementById('tab-month').addEventListener('click', function() { switchTab('month'); });
+  document.getElementById('tab-alltime').addEventListener('click', function() { switchTab('alltime'); });
+  document.getElementById('month-select').addEventListener('change', function() { loadStats(); });
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.stats-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('month-row').className = 'month-row' + (tab === 'month' ? ' visible' : '');
+    loadStats();
+  }
+
+  function loadStats() {
+    if (!settings.activeVenue) return;
+    db.collection('venueEvents').doc(settings.activeVenue).collection('events').get()
+      .then(function(snap) {
+        var all = snap.docs.map(function(d) { return d.data(); });
+        var today = new Date().toISOString().split('T')[0];
+        var months = [];
+        all.forEach(function(e) { if (e.month && months.indexOf(e.month) < 0) months.push(e.month); });
+        months.sort().reverse();
+
+        var sel = document.getElementById('month-select');
+        if (months.length) {
+          var cur = sel.value;
+          sel.innerHTML = months.map(function(m) {
+            var d = new Date(parseInt(m.split('-')[0]), parseInt(m.split('-')[1]) - 1);
+            var lbl = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+            return '<option value="' + m + '"' + (m === cur ? ' selected' : '') + '>' + lbl + '</option>';
+          }).join('');
+        }
+
+        var events = all;
+        if (currentTab === 'tonight') events = all.filter(function(e) { return e.date === today; });
+        else if (currentTab === 'month') { var m = sel.value || months[0]; events = all.filter(function(e) { return e.month === m; }); }
+
+        var scans = events.filter(function(e) { return e.type === 'scan'; }).length;
+        var reqs  = events.filter(function(e) { return e.type === 'request'; }).length;
+        var perfs = events.filter(function(e) { return e.type === 'performance'; }).length;
+        var cxls  = events.filter(function(e) { return e.type === 'cancellation'; }).length;
+        var waits = events.filter(function(e) { return e.type === 'performance' && e.waitMs; }).map(function(e) { return e.waitMs; });
+
+        document.getElementById('stat-performances').textContent = perfs;
+        document.getElementById('stat-total-scans').textContent = scans;
+        document.getElementById('stat-cancellations').textContent = cxls;
+        document.getElementById('stat-conversion').textContent = scans > 0 ? Math.round(reqs / scans * 100) + '%' : '—';
+
+        if (waits.length) {
+          var avg = waits.reduce(function(a, b) { return a + b; }, 0) / waits.length;
+          document.getElementById('stat-avg-wait').textContent = fmtTime(avg);
+        } else document.getElementById('stat-avg-wait').textContent = '—';
+
+        var reqHours = events.filter(function(e) { return e.type === 'request' && e.hour != null; });
+        if (reqHours.length) {
+          var hc = {};
+          reqHours.forEach(function(e) { hc[e.hour] = (hc[e.hour] || 0) + 1; });
+          var ph = parseInt(Object.keys(hc).sort(function(a,b){return hc[b]-hc[a];})[0]);
+          document.getElementById('stat-peak').textContent = ph === 0 ? '12am' : ph < 12 ? ph + 'am' : ph === 12 ? '12pm' : (ph-12) + 'pm';
+        } else document.getElementById('stat-peak').textContent = '—';
+
+        // Return visitor rate
+        var scanEvents = events.filter(function(e) { return e.type === 'scan' && e.visitorToken; });
+        if (scanEvents.length > 0) {
+          var returningCount = scanEvents.filter(function(e) { return e.returning; }).length;
+          document.getElementById('stat-returning').textContent = Math.round(returningCount / scanEvents.length * 100) + '%';
+        } else document.getElementById('stat-returning').textContent = '—';
+
+      }).catch(function() {});
+  }
+
+  function logEvent(type, table, requestedAt) {
+    if (!settings.activeVenue) return;
+    var waitMs = (type === 'performance' && requestedAt) ? Date.now() - requestedAt : null;
+    db.collection('venueEvents').doc(settings.activeVenue).collection('events')
+      .doc(Date.now() + '_' + table + '_' + type)
+      .set({
+        type: type, table: table, venue: settings.activeVenue,
+        timestamp: FS.serverTimestamp(),
+        date: new Date().toISOString().split('T')[0],
+        month: new Date().toISOString().slice(0, 7),
+        hour: new Date().getHours(),
+        waitMs: waitMs || null
+      }).catch(function() {});
+  }
+
+  // ─── AUDIO ──────────────────────────────────────────────────────────────────
+  function playAlert() {
+    var t = settings.alert;
+    if (t === 'off') return;
+    if ((t === 'vibrate' || t === 'both') && navigator.vibrate) navigator.vibrate([150, 80, 150]);
+    if (t === 'chime' || t === 'double' || t === 'both') {
+      try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function tone(freq, start, dur) {
+          var o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.value = freq; o.type = 'sine';
+          g.gain.setValueAtTime(0, ctx.currentTime + start);
+          g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + start + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+          o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur);
+        }
+        if (t === 'chime' || t === 'both') tone(880, 0, 0.6);
+        else { tone(660, 0, 0.15); tone(660, 0.22, 0.15); }
+      } catch(e) {}
+    }
+  }
+
+  // ─── VENUES ─────────────────────────────────────────────────────────────────
+  document.getElementById('venue-badge').addEventListener('click', openVenueModal);
+  document.getElementById('modal-close-btn').addEventListener('click', closeVenueModal);
+  document.getElementById('add-venue-btn').addEventListener('click', addVenue);
+  document.getElementById('save-config-btn').addEventListener('click', saveConfig);
+  document.getElementById('map-upload-label').addEventListener('click', function() {
+    document.getElementById('map-upload-input').click();
+  });
+  document.getElementById('map-upload-input').addEventListener('change', function() {
+    var file = this.files[0]; if (!file) return;
+    var r = new FileReader();
+    r.onload = function(ev) {
+      newMapData = ev.target.result;
+      document.getElementById('map-upload-label').classList.add('ready');
+      document.getElementById('map-upload-text').textContent = '✓ Floor plan ready';
+    };
+    r.readAsDataURL(file);
+  });
+
+  document.getElementById('map-container').addEventListener('click', function(e) {
+    var btn = e.target.closest('.map-change-btn');
+    if (btn) updateMap(btn.dataset.slug);
+    else openVenueModal();
+  });
+
+  // Color picker sync
+  ['bg','box','accent','highlight','text','muted'].forEach(function(k) {
+    var p = document.getElementById('c-'+k+'-p'), h = document.getElementById('c-'+k+'-h');
+    p.addEventListener('input', function() { h.value = p.value; });
+    h.addEventListener('input', function() { if (/^#[0-9a-fA-F]{6}$/.test(h.value)) p.value = h.value; });
+  });
+
+  function openVenueModal() {
+    renderVenueList();
+    document.getElementById('add-venue-form').style.display = 'flex';
+    document.getElementById('customize-form').style.display = 'none';
+    document.getElementById('venue-modal').classList.add('open');
+  }
+
+  function closeVenueModal() {
+    document.getElementById('venue-modal').classList.remove('open');
+    document.getElementById('new-venue-name').value = '';
+    newMapData = null;
+    document.getElementById('map-upload-label').classList.remove('ready');
+    document.getElementById('map-upload-text').textContent = '+ Upload floor plan';
+    document.getElementById('add-venue-form').style.display = 'flex';
+    document.getElementById('customize-form').style.display = 'none';
+  }
+
+  function addVenue() {
+    var name = document.getElementById('new-venue-name').value.trim();
+    if (!name) return;
+    var s = slug(name);
+    if (venues.find(function(v) { return v.slug === s; })) { alert('A venue with that name already exists.'); return; }
+    var tablesRaw = document.getElementById('new-venue-tables').value.trim();
+    var tableNums = tablesRaw ? tablesRaw.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; }) : [];
+    var v = { name: name, slug: s, map: newMapData || null, config: {}, tables: tableNums };
+    venues.push(v);
+    saveVenues();
+    renderVenueList();
+    document.getElementById('new-venue-name').value = '';
+    document.getElementById('new-venue-tables').value = '';
+    newMapData = null;
+    document.getElementById('map-upload-label').classList.remove('ready');
+    document.getElementById('map-upload-text').textContent = '+ Upload floor plan';
+  }
+
+  function selectVenue(s) {
+    settings.activeVenue = s;
+    localStorage.setItem('activeVenue', s);
+    var v = venues.find(function(v) { return v.slug === s; });
+    if (v) {
+      document.getElementById('venue-badge').textContent = v.name;
+      if (v.map) showMap(v.map, s);
+      else setMapPlaceholder('No floor plan for this venue');
+    }
+    db.collection('venueConfigs').doc(s).set({ timerMins: settings.timer }, { merge: true }).catch(function() {});
+    closeVenueModal();
+    subscribeToVenue();
+    loadStats();
+  }
+
+  function openCustomize(s) {
+    customizeSlug = s;
+    var v = venues.find(function(v) { return v.slug === s; });
+    document.getElementById('customize-title').textContent = 'Customize — ' + (v ? v.name : s);
+    document.getElementById('add-venue-form').style.display = 'none';
+    document.getElementById('customize-form').style.display = 'block';
+    var defs = { bg:'#26060f', box:'#273534', accent:'#6f0f43', highlight:'#927b52', text:'#eae9d6', muted:'#9aab9a' };
+    var cfg = (v && v.config) || {};
+    Object.keys(defs).forEach(function(k) {
+      var capK = k.charAt(0).toUpperCase() + k.slice(1);
+      var val = cfg['color'+capK] || defs[k];
+      document.getElementById('c-'+k+'-p').value = val;
+      document.getElementById('c-'+k+'-h').value = val;
+    });
+    document.getElementById('c-link-label').value = cfg.venueLinkLabel || '';
+    document.getElementById('c-link-url').value = cfg.venueLinkUrl || '';
+    document.getElementById('c-password').value = cfg.statsPassword || '';
+    var tablesEl = document.getElementById('c-tables');
+    tablesEl.value = (v && v.tables) ? v.tables.join(', ') : '';
+    setTimeout(function() { tablesEl.style.height = 'auto'; tablesEl.style.height = tablesEl.scrollHeight + 'px'; }, 0);
+    document.getElementById('customize-form').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function saveConfig() {
+    if (!customizeSlug) return;
+    var v = venues.find(function(v) { return v.slug === customizeSlug; });
+    if (!v) return;
+    var cfg = {
+      colorBg:        document.getElementById('c-bg-h').value,
+      colorBox:       document.getElementById('c-box-h').value,
+      colorAccent:    document.getElementById('c-accent-h').value,
+      colorHighlight: document.getElementById('c-highlight-h').value,
+      colorText:      document.getElementById('c-text-h').value,
+      colorMuted:     document.getElementById('c-muted-h').value,
+      venueLinkLabel: document.getElementById('c-link-label').value.trim(),
+      venueLinkUrl:   document.getElementById('c-link-url').value.trim(),
+      statsPassword:  document.getElementById('c-password').value.trim()
+    };
+    var tablesRaw = document.getElementById('c-tables').value.trim();
+    v.tables = tablesRaw ? tablesRaw.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; }) : [];
+    v.config = cfg;
+    saveVenues();
+    db.collection('venueConfigs').doc(customizeSlug).set(cfg).catch(function() {});
+    showSaved('config-saved');
+  }
+
+  function renameVenue(s) {
+    var v = venues.find(function(v) { return v.slug === s; });
+    if (!v) return;
+    var n = prompt('Rename venue:', v.name);
+    if (!n || !n.trim()) return;
+    var oldSlug = v.slug;
+    v.name = n.trim(); v.slug = slug(n.trim());
+    if (settings.activeVenue === oldSlug) {
+      settings.activeVenue = v.slug;
+      localStorage.setItem('activeVenue', v.slug);
+      document.getElementById('venue-badge').textContent = v.name;
+    }
+    saveVenues(); renderVenueList(); subscribeToVenue();
+  }
+
+  function updateMap(s) {
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = function() {
+      var file = inp.files[0]; if (!file) return;
+      var r = new FileReader();
+      r.onload = function(ev) {
+        var v = venues.find(function(v) { return v.slug === s; });
+        if (!v) return;
+        v.map = ev.target.result;
+        localStorage.setItem('map_' + s, ev.target.result);
+        saveVenues();
+        if (settings.activeVenue === s) showMap(ev.target.result, s);
+      };
+      r.readAsDataURL(file);
+    };
+    inp.click();
+  }
+
+  function deleteVenue(s) {
+    if (!confirm('Delete this venue?')) return;
+    venues = venues.filter(function(v) { return v.slug !== s; });
+    db.collection('venuePresets').doc(s).delete().catch(function() {});
+    localStorage.removeItem('map_' + s);
+    if (settings.activeVenue === s) {
+      settings.activeVenue = null;
+      localStorage.removeItem('activeVenue');
+      document.getElementById('venue-badge').textContent = 'No venue selected';
+      setMapPlaceholder('Select a venue to load floor plan');
+      if (unsubscribe) unsubscribe();
+    }
+    saveVenues(); renderVenueList();
+  }
+
+  function openQRGenerator(s) {
+    localStorage.setItem('qr_preselect', s);
+    window.open('qr.html', '_blank');
+  }
+
+  function showMap(src, s) {
+    document.getElementById('map-container').innerHTML =
+      '<img src="' + src + '" alt="Floor plan">' +
+      '<button class="map-change-btn" data-slug="' + s + '">Change map</button>';
+  }
+
+  function setMapPlaceholder(text) {
+    document.getElementById('map-container').innerHTML =
+      '<div class="map-placeholder"><div class="map-placeholder-text">' + text + '</div></div>';
+  }
+
+  function saveVenues() {
+    var batch = db.batch();
+    venues.forEach(function(v) {
+      batch.set(db.collection('venuePresets').doc(v.slug), { name: v.name, slug: v.slug, config: v.config || {}, tables: v.tables || [] });
+    });
+    batch.commit().catch(function() {});
+    venues.forEach(function(v) { if (v.map) localStorage.setItem('map_' + v.slug, v.map); });
+  }
+
+  function loadVenues() {
+    db.collection('venuePresets').get().then(function(snap) {
+      venues = snap.docs.map(function(d) {
+        var data = d.data();
+        return { name: data.name, slug: data.slug, config: data.config || {}, tables: data.tables || [], map: localStorage.getItem('map_' + data.slug) || null };
+      });
+      renderVenueList();
+      if (settings.activeVenue) {
+        var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
+        if (v) {
+          document.getElementById('venue-badge').textContent = v.name;
+          if (v.map) showMap(v.map, v.slug);
+        }
+      }
+    }).catch(function() {});
+  }
+
+  function renderVenueList() {
+    var list = document.getElementById('venue-list');
+    if (!venues.length) {
+      list.innerHTML = '<div style="padding:1rem;font-size:0.72rem;color:var(--muted);text-align:center;">No venues yet.</div>';
+      return;
+    }
+    list.innerHTML = venues.map(function(v) {
+      var isActive = settings.activeVenue === v.slug;
+      return '<div class="venue-item' + (isActive ? ' active' : '') + '">' +
+        '<div style="flex:1;">' +
+          '<div class="venue-item-name">' + v.name + '</div>' +
+          (isActive ? '<div class="venue-item-active-label">Active</div>' : '') +
+        '</div>' +
+        '<div class="venue-actions">' +
+          '<button class="venue-btn primary" data-action="select" data-slug="' + v.slug + '">Select</button>' +
+          '<button class="venue-btn" data-action="customize" data-slug="' + v.slug + '">Customize</button>' +
+          '<button class="venue-btn" data-action="rename" data-slug="' + v.slug + '">Rename</button>' +
+          '<button class="venue-btn" data-action="map" data-slug="' + v.slug + '">Map</button>' +
+          '<button class="venue-btn" data-action="qr" data-slug="' + v.slug + '">QR Codes</button>' +
+          '<button class="venue-btn danger" data-action="delete" data-slug="' + v.slug + '">Delete</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    list.onclick = function(e) {
+      var btn = e.target.closest('[data-action]'); if (!btn) return;
+      var a = btn.dataset.action, s = btn.dataset.slug;
+      if (a === 'select')    selectVenue(s);
+      else if (a === 'customize') openCustomize(s);
+      else if (a === 'rename')    renameVenue(s);
+      else if (a === 'map')       updateMap(s);
+      else if (a === 'qr')        openQRGenerator(s);
+      else if (a === 'delete')    deleteVenue(s);
+    };
+  }
+
+  // ─── QUEUE ──────────────────────────────────────────────────────────────────
+  function subscribeToVenue() {
+    if (!settings.activeVenue) return;
+    if (unsubscribe) unsubscribe();
+    entries = [];
+    renderQueue();
+    unsubscribe = db.collection('venues').doc(settings.activeVenue).collection('tables')
+      .onSnapshot(function(snapshot) {
+        snapshot.docChanges().forEach(function(change) {
+          handleUpdate(Object.assign({ id: change.doc.id }, change.doc.data()));
+        });
+        renderQueue();
+      });
+  }
+
+  function handleUpdate(data) {
+    var label = 'Table ' + data.table;
+    var existing = entries.find(function(e) { return e.id === data.id; });
+    var FIVE_MIN = 5 * 60 * 1000;
+
+    if (data.status === 'reset') {
+      var wasRequest = existing && existing.type === 'request';
+      entries = entries.filter(function(e) { return e.id !== data.id; });
+      // If heading to this table, cancel the bar
+      if (headingToId === data.id) {
+        stopCountdown();
+        headingToId = null;
+        document.getElementById('heading-bar').style.display = 'none';
+      }
+      // Only show cancel notice if the table was actively in the queue
+      if (wasRequest) {
+        var tableLabel = 'Table ' + (data.table || (existing && existing.table) || '?');
+        showCancelNotice(tableLabel, data.id, 5 * 60 * 1000);
+      }
+      updatePositions();
+      return;
+    }
+
+    if (data.status === 'scanned') {
+      if (!existing) {
+        var scannedAt = data.scannedAt ? data.scannedAt.toMillis() : Date.now();
+        // Only add if scan is less than 5 minutes old
+        if (Date.now() - scannedAt < FIVE_MIN) {
+          entries.push({ id: data.id, table: data.table, label: label, type: 'scan', requestedAt: null, scannedAt: scannedAt });
+        }
+      }
+
+    } else if (data.status === 'requested') {
+      if (existing && existing.type === 'scan') {
+        existing.type = 'request';
+        existing.requestedAt = data.requestedAt ? data.requestedAt.toMillis() : Date.now();
+        entries = entries.filter(function(e) { return e.id !== data.id; });
+        entries.push(existing);
+      } else if (!existing) {
+        entries.push({ id: data.id, table: data.table, label: label, type: 'request', requestedAt: data.requestedAt ? data.requestedAt.toMillis() : Date.now() });
+      }
+      playAlert();
+      updatePositions();
+
+    } else if (data.status === 'on_my_way') {
+      entries = entries.filter(function(e) { return e.id !== data.id; });
+      updatePositions();
+      // Restore countdown bar if page was reloaded mid-performance
+      if (data.onMyWayAt && !countdownInterval) {
+        var startedAt = data.onMyWayAt.toMillis();
+        var timerMs = (data.timerMins || settings.timer) * 60 * 1000;
+        if (Date.now() - startedAt < timerMs) {
+          document.getElementById('heading-bar').style.display = 'flex';
+          document.getElementById('heading-bar-table').textContent = label;
+          startCountdown(startedAt, timerMs);
+        }
+      }
+
+    }
+  }
+
+  function showCancelNotice(label, id, remainingMs) {
+    var el = document.createElement('div');
+    el.className = 'cancel-notice';
+    el.setAttribute('data-cancel-id', id);
+    el.textContent = label + ' — Cancelled Request';
+    document.getElementById('cancel-notices').appendChild(el);
+    setTimeout(function() {
+      el.style.opacity = '0';
+      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 500);
+    }, remainingMs);
+  }
+
+  function updatePositions() {
+    if (!settings.activeVenue) return;
+    entries.filter(function(e) { return e.type === 'request'; }).forEach(function(e, i) {
+      db.collection('venues').doc(settings.activeVenue).collection('tables').doc(e.id)
+        .update({ queuePosition: i + 1 }).catch(function() {});
+    });
+  }
+
+  function renderQueue() {
+    var list = document.getElementById('queue-list');
+    var count = document.getElementById('queue-count');
+    var FIVE_MIN = 5 * 60 * 1000;
+
+    // Filter expired scans
+    entries = entries.filter(function(e) {
+      return !(e.type === 'scan' && e.scannedAt && Date.now() - e.scannedAt > FIVE_MIN);
+    });
+
+    var requests = entries.filter(function(e) { return e.type === 'request'; });
+    var scans    = entries.filter(function(e) { return e.type === 'scan'; });
+    var sorted   = requests.concat(scans);
+    var top      = requests[0] || null;
+
+    count.textContent = requests.length;
+    count.className = 'queue-count' + (requests.length === 0 ? ' empty' : '');
+
+    if (!sorted.length) { list.innerHTML = '<div class="queue-empty">No activity yet.</div>'; return; }
+
+    list.innerHTML = '';
+    sorted.forEach(function(entry) {
+      var isTop = entry === top;
+      var div = document.createElement('div');
+      div.className = 'queue-entry' + (isTop ? ' is-top' : '');
+
+      if (entry.type === 'request') {
+        var ms = entry.requestedAt ? Date.now() - entry.requestedAt : 0;
+        var waitStr = fmtTime(ms);
+        div.innerHTML =
+          '<div class="entry-left">' +
+            '<div class="entry-name">' + entry.label + '</div>' +
+            '<div class="entry-wait">Waiting ' + waitStr + '</div>' +
+          '</div>' +
+          (isTop ? '<button class="on-my-way-btn" data-id="' + entry.id + '" data-label="' + entry.label + '" data-requested="' + (entry.requestedAt || '') + '">On my way</button>' : '');
+      } else {
+        div.innerHTML = '<div class="entry-left"><div class="entry-name scan">' + entry.label + ' — Scan</div></div>';
+      }
+      list.appendChild(div);
+    });
+
+    var btn = list.querySelector('.on-my-way-btn');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        var id = this.dataset.id;
+        var lbl = this.dataset.label;
+        var requestedAt = this.dataset.requested ? parseInt(this.dataset.requested) : null;
+        // Always read current slider value so no save required
+        settings.timer = parseInt(document.getElementById('timer-range').value);
+        localStorage.setItem('timer', settings.timer);
+        var timerMs = settings.timer * 60 * 1000;
+
+        headingToId = id;
+
+        // Write to Firebase — diner page reads onMyWayAt and handles its own transition
+        db.collection('venues').doc(settings.activeVenue).collection('tables').doc(id)
+          .update({ status: 'on_my_way', onMyWayAt: FS.serverTimestamp(), timerMins: settings.timer });
+
+        logEvent('performance', id.replace('table_', ''), requestedAt);
+
+        // Show heading bar — countdown calculates from local time
+        // (will be corrected to server time once Firebase confirms onMyWayAt)
+        var localStart = Date.now();
+        document.getElementById('heading-bar').style.display = 'flex';
+        document.getElementById('heading-bar-table').textContent = lbl;
+        startCountdown(localStart, timerMs);
+
+        // Once Firebase confirms the server timestamp, restart with accurate time
+        db.collection('venues').doc(settings.activeVenue).collection('tables').doc(id)
+          .get().then(function(s) {
+            if (s.exists && s.data().onMyWayAt && s.data().status === 'on_my_way') {
+              startCountdown(s.data().onMyWayAt.toMillis(), timerMs);
+            }
+          }).catch(function() {});
+
+        updatePositions();
+        renderQueue();
+      });
+    }
+  }
+
+  // Refresh wait times every second
+  setInterval(function() {
+    if (entries.some(function(e) { return e.type === 'request'; })) renderQueue();
+  }, 1000);
+
+  // ─── END NIGHT ──────────────────────────────────────────────────────────────
+  document.getElementById('end-night-btn').addEventListener('click', function() {
+    if (!settings.activeVenue) return;
+    if (!confirm('End the night? This will clear all active table data for ' + (document.getElementById('venue-badge').textContent) + '.')) return;
+
+    db.collection('venues').doc(settings.activeVenue).collection('tables').get()
+      .then(function(snap) {
+        var batch = db.batch();
+        snap.docs.forEach(function(doc) { batch.delete(doc.ref); });
+        return batch.commit();
+      })
+      .then(function() {
+        entries = [];
+        document.getElementById('cancel-notices').innerHTML = '';
+        stopCountdown();
+        document.getElementById('heading-bar').style.display = 'none';
+        renderQueue();
+      })
+      .catch(function(e) { console.error('End night error', e); });
+  });
+
+  // ─── INIT ───────────────────────────────────────────────────────────────────
+  loadVenues();
+  if (settings.activeVenue) {
+    subscribeToVenue();
+    loadStats();
+  }
+  // ─── SIGN-IN GATE ───────────────────────────────────────────────────────────
+  // Page stays hidden until we know someone is signed in.
+  document.getElementById('signout-btn').addEventListener('click', function() {
+    firebase.auth().signOut();
+  });
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (!user) { window.location.replace('login.html'); return; }
+    document.getElementById('account-email').textContent = user.email;
+    document.body.classList.remove('pending');
+  });
+</script>
+</body>
+</html>

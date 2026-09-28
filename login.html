@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in | Tablside</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400&family=Raleway:wght@300;400;500;600&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#f4f2ee; --surface:#fff; --surface2:#ede9e2; --border:#d6d0c6;
+    --text:#1a1612; --muted:#8a8278; --teal:#273534; --red:#a01a1a;
+  }
+  body { font-family:'Raleway',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:2.5rem 1rem 3rem; max-width:420px; margin:0 auto; }
+  .header-title { font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:400; color:var(--teal); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0.25rem; }
+  .header-sub { font-size:0.65rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:2rem; }
+  .tabs { display:none; gap:1px; margin-bottom:1rem; }
+  .tabs.show { display:flex; }
+  .tab { flex:1; padding:0.7rem; text-align:center; font-size:0.65rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); background:var(--surface2); border:1px solid var(--border); cursor:pointer; }
+  .tab.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+  .field { margin-bottom:0.75rem; }
+  .label { font-size:0.6rem; font-weight:500; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0.35rem; }
+  input { width:100%; padding:0.85rem 1rem; background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.85rem; outline:none; border-radius:0; }
+  input:focus { border-color:var(--teal); }
+  .btn { width:100%; margin-top:0.5rem; padding:1rem; background:var(--teal); border:none; color:#fff; font-family:'Raleway',sans-serif; font-size:0.72rem; font-weight:500; letter-spacing:0.2em; text-transform:uppercase; cursor:pointer; }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .link { display:block; margin-top:1rem; text-align:center; font-size:0.65rem; color:var(--muted); letter-spacing:0.08em; text-decoration:underline; cursor:pointer; }
+  .msg { min-height:1.5rem; margin-top:1rem; text-align:center; font-size:0.68rem; letter-spacing:0.06em; line-height:1.6; }
+  .msg.error { color:var(--red); }
+  .msg.ok { color:var(--teal); }
+</style>
+</head>
+<body>
+<div class="header-title">TablSide</div>
+<div class="header-sub">Magician sign in</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" id="tab-in">Sign in</div>
+  <div class="tab" id="tab-up">Create account</div>
+</div>
+
+<div class="field"><div class="label">Email</div><input type="email" id="email" autocomplete="email" inputmode="email"></div>
+<div class="field"><div class="label">Password</div><input type="password" id="password" autocomplete="current-password"></div>
+<div class="field" id="confirm-field" style="display:none;"><div class="label">Confirm password</div><input type="password" id="confirm" autocomplete="new-password"></div>
+
+<button class="btn" id="submit-btn">Sign in</button>
+<a class="link" id="forgot-link">Forgot password?</a>
+<div class="msg" id="msg"></div>
+
+<script>
+  // Set to true at launch to show the "Create account" tab.
+  var SIGNUP_OPEN = false;
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
+    authDomain: "tablside-magic.firebaseapp.com",
+    projectId: "tablside-magic",
+    storageBucket: "tablside-magic.firebasestorage.app",
+    messagingSenderId: "209355723420",
+    appId: "1:209355723420:web:c4bf8aeab08cc425135359"
+  });
+  var auth = firebase.auth();
+  var mode = 'in';
+  var MIN_PASSWORD = 8;
+
+  var msgEl = document.getElementById('msg');
+  function say(text, kind) { msgEl.textContent = text; msgEl.className = 'msg ' + (kind || ''); }
+
+  if (SIGNUP_OPEN) document.getElementById('tabs').classList.add('show');
+
+  function setMode(m) {
+    if (m === 'up' && !SIGNUP_OPEN) return;
+    mode = m;
+    document.getElementById('tab-in').classList.toggle('active', m === 'in');
+    document.getElementById('tab-up').classList.toggle('active', m === 'up');
+    document.getElementById('confirm-field').style.display = m === 'up' ? 'block' : 'none';
+    document.getElementById('forgot-link').style.display = m === 'in' ? 'block' : 'none';
+    document.getElementById('submit-btn').textContent = m === 'in' ? 'Sign in' : 'Create account';
+    document.getElementById('password').autocomplete = m === 'in' ? 'current-password' : 'new-password';
+    say('');
+  }
+  document.getElementById('tab-in').addEventListener('click', function() { setMode('in'); });
+  document.getElementById('tab-up').addEventListener('click', function() { setMode('up'); });
+
+  function friendly(err) {
+    switch (err && err.code) {
+      case 'auth/invalid-email': return 'That email address does not look right.';
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found': return 'Email or password is incorrect.';
+      case 'auth/email-already-in-use': return 'An account with that email already exists. Try signing in.';
+      case 'auth/weak-password': return 'Choose a stronger password (at least ' + MIN_PASSWORD + ' characters).';
+      case 'auth/too-many-requests': return 'Too many attempts. Wait a few minutes and try again.';
+      case 'auth/network-request-failed': return 'Network problem. Check your connection.';
+      case 'auth/operation-not-allowed': return 'Email sign-in is not turned on for this project yet.';
+      default: return 'Something went wrong. Try again.';
+    }
+  }
+
+  function submit() {
+    var email = document.getElementById('email').value.trim();
+    var pw = document.getElementById('password').value;
+    if (!email || !pw) { say('Enter your email and password.', 'error'); return; }
+    if (mode === 'up') {
+      if (pw.length < MIN_PASSWORD) { say('Use at least ' + MIN_PASSWORD + ' characters.', 'error'); return; }
+      if (pw !== document.getElementById('confirm').value) { say('Passwords do not match.', 'error'); return; }
+    }
+    var btn = document.getElementById('submit-btn');
+    btn.disabled = true; say('');
+    var p = mode === 'in'
+      ? auth.signInWithEmailAndPassword(email, pw)
+      : auth.createUserWithEmailAndPassword(email, pw);
+    p.catch(function(err) { say(friendly(err), 'error'); btn.disabled = false; });
+    // On success, onAuthStateChanged below sends the person to the admin page.
+  }
+  document.getElementById('submit-btn').addEventListener('click', submit);
+  ['email', 'password', 'confirm'].forEach(function(id) {
+    document.getElementById(id).addEventListener('keydown', function(e) { if (e.key === 'Enter') submit(); });
+  });
+
+  document.getElementById('forgot-link').addEventListener('click', function() {
+    var email = document.getElementById('email').value.trim();
+    if (!email) { say('Enter your email above first.', 'error'); return; }
+    auth.sendPasswordResetEmail(email)
+      .then(function() { say('If that email has an account, a reset link is on its way.', 'ok'); })
+      .catch(function(err) { say(friendly(err), 'error'); });
+  });
+
+  auth.onAuthStateChanged(function(user) {
+    if (user) window.location.replace('admin.html');
+  });
+</script>
+</body>
+</html>
