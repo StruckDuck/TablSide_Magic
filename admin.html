@@ -276,6 +276,7 @@
   var currentTab = 'tonight';
   var customizeSlug = null;
   var newMapData = null;
+  var currentUser = null;
 
   // ─── HELPERS ────────────────────────────────────────────────────────────────
   function slug(name) { return name.toLowerCase().replace(/[^a-z0-9]/g, ''); }
@@ -514,22 +515,52 @@
     document.getElementById('customize-form').style.display = 'none';
   }
 
+  function generateVenueId() {
+    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var id = '';
+    for (var i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+    return id;
+  }
+
+  function cleanTableList(raw) {
+    var seen = {};
+    return raw
+      ? raw.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; })
+             .filter(function(t) { return seen[t] ? false : (seen[t] = true); })
+      : [];
+  }
+
   function addVenue() {
     var name = document.getElementById('new-venue-name').value.trim();
     if (!name) return;
-    var s = slug(name);
-    if (venues.find(function(v) { return v.slug === s; })) { alert('A venue with that name already exists.'); return; }
-    var tablesRaw = document.getElementById('new-venue-tables').value.trim();
-    var tableNums = tablesRaw ? tablesRaw.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; }) : [];
-    var v = { name: name, slug: s, map: newMapData || null, config: {}, tables: tableNums };
-    venues.push(v);
-    saveVenues();
-    renderVenueList();
-    document.getElementById('new-venue-name').value = '';
-    document.getElementById('new-venue-tables').value = '';
-    newMapData = null;
-    document.getElementById('map-upload-label').classList.remove('ready');
-    document.getElementById('map-upload-text').textContent = '+ Upload floor plan';
+    var tableNums = cleanTableList(document.getElementById('new-venue-tables').value.trim());
+    var mapData = newMapData || null;
+
+    function tryCreate(attemptsLeft) {
+      var id = generateVenueId();
+      db.collection('venues').doc(id).set({
+        ownerUid: currentUser.uid,
+        name: name,
+        tables: tableNums,
+        colors: {},
+        links: [],
+        timerMins: 3,
+        createdAt: FS.serverTimestamp()
+      }).then(function() {
+        venues.push({ name: name, slug: id, map: mapData, config: {}, tables: tableNums });
+        if (mapData) localStorage.setItem('map_' + id, mapData);
+        renderVenueList();
+        document.getElementById('new-venue-name').value = '';
+        document.getElementById('new-venue-tables').value = '';
+        newMapData = null;
+        document.getElementById('map-upload-label').classList.remove('ready');
+        document.getElementById('map-upload-text').textContent = '+ Upload floor plan';
+      }).catch(function() {
+        if (attemptsLeft > 0) { tryCreate(attemptsLeft - 1); return; }
+        alert('Could not create the venue. Check your connection and try again.');
+      });
+    }
+    tryCreate(4);
   }
 
   function selectVenue(s) {
@@ -596,16 +627,15 @@
   function renameVenue(s) {
     var v = venues.find(function(v) { return v.slug === s; });
     if (!v) return;
-    var n = prompt('Rename venue:', v.name);
+    var n = prompt('Rename venue (QR code links stay the same):', v.name);
     if (!n || !n.trim()) return;
-    var oldSlug = v.slug;
-    v.name = n.trim(); v.slug = slug(n.trim());
-    if (settings.activeVenue === oldSlug) {
-      settings.activeVenue = v.slug;
-      localStorage.setItem('activeVenue', v.slug);
-      document.getElementById('venue-badge').textContent = v.name;
-    }
-    saveVenues(); renderVenueList(); subscribeToVenue();
+    db.collection('venues').doc(s).update({ name: n.trim() }).then(function() {
+      v.name = n.trim();
+      if (settings.activeVenue === s) document.getElementById('venue-badge').textContent = v.name;
+      renderVenueList();
+    }).catch(function() {
+      alert('Could not rename the venue. Check your connection and try again.');
+    });
   }
 
   function updateMap(s) {
@@ -628,18 +658,28 @@
   }
 
   function deleteVenue(s) {
-    if (!confirm('Delete this venue?')) return;
-    venues = venues.filter(function(v) { return v.slug !== s; });
-    db.collection('venuePresets').doc(s).delete().catch(function() {});
-    localStorage.removeItem('map_' + s);
-    if (settings.activeVenue === s) {
-      settings.activeVenue = null;
-      localStorage.removeItem('activeVenue');
-      document.getElementById('venue-badge').textContent = 'No venue selected';
-      setMapPlaceholder('Select a venue to load floor plan');
-      if (unsubscribe) unsubscribe();
-    }
-    saveVenues(); renderVenueList();
+    if (!confirm('Delete this venue? Its QR codes will stop working.')) return;
+    var venueRef = db.collection('venues').doc(s);
+    venueRef.collection('tables').get().then(function(snap) {
+      var batch = db.batch();
+      snap.docs.forEach(function(d) { batch.delete(d.ref); });
+      return batch.commit();
+    }).then(function() {
+      return venueRef.delete();
+    }).then(function() {
+      venues = venues.filter(function(v) { return v.slug !== s; });
+      localStorage.removeItem('map_' + s);
+      if (settings.activeVenue === s) {
+        settings.activeVenue = null;
+        localStorage.removeItem('activeVenue');
+        document.getElementById('venue-badge').textContent = 'No venue selected';
+        setMapPlaceholder('Select a venue to load floor plan');
+        if (unsubscribe) unsubscribe();
+      }
+      renderVenueList();
+    }).catch(function() {
+      alert('Could not delete the venue. Check your connection and try again.');
+    });
   }
 
   function openQRGenerator(s) {
@@ -668,10 +708,10 @@
   }
 
   function loadVenues() {
-    db.collection('venuePresets').get().then(function(snap) {
+    db.collection('venues').where('ownerUid', '==', currentUser.uid).get().then(function(snap) {
       venues = snap.docs.map(function(d) {
         var data = d.data();
-        return { name: data.name, slug: data.slug, config: data.config || {}, tables: data.tables || [], map: localStorage.getItem('map_' + data.slug) || null };
+        return { name: data.name, slug: d.id, config: data.config || {}, tables: data.tables || [], map: localStorage.getItem('map_' + d.id) || null };
       });
       renderVenueList();
       if (settings.activeVenue) {
@@ -679,6 +719,12 @@
         if (v) {
           document.getElementById('venue-badge').textContent = v.name;
           if (v.map) showMap(v.map, v.slug);
+        } else {
+          // Saved venue belongs to another account or no longer exists
+          settings.activeVenue = null;
+          localStorage.removeItem('activeVenue');
+          document.getElementById('venue-badge').textContent = 'No venue selected';
+          setMapPlaceholder('Select a venue to load floor plan');
         }
       }
     }).catch(function() {});
@@ -924,7 +970,6 @@
   });
 
   // ─── INIT ───────────────────────────────────────────────────────────────────
-  loadVenues();
   if (settings.activeVenue) {
     subscribeToVenue();
     loadStats();
@@ -936,8 +981,10 @@
   });
   firebase.auth().onAuthStateChanged(function(user) {
     if (!user) { window.location.replace('login.html'); return; }
+    currentUser = user;
     document.getElementById('account-email').textContent = user.email;
     document.body.classList.remove('pending');
+    loadVenues();
   });
 </script>
 </body>
