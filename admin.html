@@ -221,7 +221,10 @@
       <button class="modal-close" id="modal-close-btn">×</button>
     </div>
     <div class="venue-list" id="venue-list"></div>
-    <div class="add-venue-form" id="add-venue-form">
+    <div style="padding:1rem;border-top:1px solid var(--border);">
+      <button class="primary-btn" id="show-add-venue-btn" style="width:100%;">+ Add New Venue</button>
+    </div>
+    <div class="add-venue-form" id="add-venue-form" style="display:none;">
       <div class="form-label">Add new venue</div>
       <input type="text" class="text-field" id="new-venue-name" placeholder="Venue name (e.g. Lady Slipper)">
       <label class="file-label" id="map-upload-label">
@@ -507,10 +510,16 @@
 
   function openVenueModal() {
     renderVenueList();
-    document.getElementById('add-venue-form').style.display = 'flex';
+    document.getElementById('show-add-venue-btn').style.display = 'block';
+    document.getElementById('add-venue-form').style.display = 'none';
     document.getElementById('customize-form').style.display = 'none';
     document.getElementById('venue-modal').classList.add('open');
   }
+
+  document.getElementById('show-add-venue-btn').addEventListener('click', function() {
+    document.getElementById('show-add-venue-btn').style.display = 'none';
+    document.getElementById('add-venue-form').style.display = 'flex';
+  });
 
   function closeVenueModal() {
     document.getElementById('venue-modal').classList.remove('open');
@@ -518,7 +527,8 @@
     newMapData = null;
     document.getElementById('map-upload-label').classList.remove('ready');
     document.getElementById('map-upload-text').textContent = '+ Upload floor plan';
-    document.getElementById('add-venue-form').style.display = 'flex';
+    document.getElementById('show-add-venue-btn').style.display = 'block';
+    document.getElementById('add-venue-form').style.display = 'none';
     document.getElementById('customize-form').style.display = 'none';
   }
 
@@ -562,6 +572,8 @@
         newMapData = null;
         document.getElementById('map-upload-label').classList.remove('ready');
         document.getElementById('map-upload-text').textContent = '+ Upload floor plan';
+        document.getElementById('add-venue-form').style.display = 'none';
+        document.getElementById('show-add-venue-btn').style.display = 'block';
       }).catch(function() {
         if (attemptsLeft > 0) { tryCreate(attemptsLeft - 1); return; }
         alert('Could not create the venue. Check your connection and try again.');
@@ -653,6 +665,7 @@
     customizeSlug = s;
     var v = venues.find(function(v) { return v.slug === s; });
     document.getElementById('customize-title').textContent = 'Customize — ' + (v ? v.name : s);
+    document.getElementById('show-add-venue-btn').style.display = 'none';
     document.getElementById('add-venue-form').style.display = 'none';
     document.getElementById('customize-form').style.display = 'block';
     document.getElementById('config-error').style.display = 'none';
