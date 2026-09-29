@@ -374,6 +374,11 @@
             scheduleTransition(onMyWayAt, d.timerMins);
             listenForUpdates();
           });
+        } else if (venueData && venueData.sessionActive !== true) {
+          // A brand new arrival, and the magician isn't currently taking requests.
+          // Anyone already mid-visit (handled above) is never affected by this.
+          showError();
+          document.getElementById('error-screen').textContent = "The magician isn't performing here right now.";
         } else {
           showScreen('screen-landing');
         }

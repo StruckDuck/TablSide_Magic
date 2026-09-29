@@ -93,6 +93,14 @@
   .floorplan-row { display:flex; align-items:center; gap:0.5rem; border:1px solid var(--border); padding:0.5rem; margin-bottom:0.5rem; }
   .floorplan-row img { width:52px; height:52px; object-fit:cover; flex-shrink:0; }
   .floorplan-row .fp-label { flex:1; font-size:0.62rem; color:var(--muted); }
+  .session-btn { display:block; width:100%; padding:0.75rem; font-family:'Raleway',sans-serif; font-size:0.65rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; -webkit-tap-highlight-color:transparent; border:1px solid; }
+  .session-btn:disabled { opacity:0.45; cursor:not-allowed; }
+  .session-btn.off { background:transparent; border-color:#b0a898; color:#6b5f52; }
+  .session-btn.on  { background:var(--teal); border-color:var(--teal); color:#fff; }
+  .session-status { text-align:center; font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-top:0.4rem; }
+  .link-click-row { display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.7rem; color:var(--text); }
+  .link-click-row:last-child { border-bottom:none; }
+  .link-click-row .count { color:var(--muted); font-weight:500; }
   .map-viewer { position:relative; width:100%; }
   .map-nav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.45); color:#fff; border:none; width:32px; height:32px; font-size:1rem; cursor:pointer; z-index:2; }
   .map-nav.prev { left:0.5rem; } .map-nav.next { right:0.5rem; }
@@ -163,7 +171,10 @@
 <div class="queue-list" id="queue-list"><div class="queue-empty">No activity yet.</div></div>
 <div class="cancel-notices" id="cancel-notices"></div>
 
-<button id="end-night-btn" style="display:block;width:100%;padding:0.75rem;background:transparent;border:1px solid #b0a898;color:#6b5f52;font-family:'Raleway',sans-serif;font-size:0.65rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:1.5rem;">End Night</button>
+<div style="margin-bottom:1.5rem;">
+  <button id="session-toggle-btn" class="session-btn off" disabled>Begin Performing</button>
+  <div class="session-status" id="session-status-label"></div>
+</div>
 
 <div class="collapse-toggle" id="stats-toggle">
   <div class="collapse-label">Stats</div>
@@ -183,7 +194,11 @@
     <div class="stat-card"><div class="stat-value" id="stat-avg-wait">—</div><div class="stat-label">Avg wait time</div></div>
     <div class="stat-card"><div class="stat-value" id="stat-total-scans">0</div><div class="stat-label">Total scans</div></div>
     <div class="stat-card"><div class="stat-value" id="stat-peak">—</div><div class="stat-label">Peak request hour</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-returning">—</div><div class="stat-label">Return visitor rate</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-avg-visit">—</div><div class="stat-label">Avg table visit</div></div>
+  </div>
+  <div id="link-clicks-section" style="display:none;padding:0 1rem 1rem;">
+    <div style="font-size:0.6rem;font-weight:500;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Link Clicks</div>
+    <div id="link-clicks-list"></div>
   </div>
   <div id="table-breakdown" style="display:none;padding:0 1rem 1rem;">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
@@ -411,10 +426,20 @@
     if (!settings.activeVenue) return;
     db.collection('venueEvents').doc(settings.activeVenue).collection('events').get()
       .then(function(snap) {
-        var all = snap.docs.map(function(d) { return d.data(); });
+        // Every date/month/hour bucket is computed here, from the event's real
+        // server timestamp — no event stores its own date/month/hour anymore.
+        var all = snap.docs.map(function(d) {
+          var data = d.data();
+          var ts = (data.timestamp && data.timestamp.toDate) ? data.timestamp.toDate() : null;
+          data._date = ts ? ts.toISOString().split('T')[0] : null;
+          data._month = ts ? ts.toISOString().slice(0, 7) : null;
+          data._hour = ts ? ts.getHours() : null;
+          data._ms = ts ? ts.getTime() : null;
+          return data;
+        });
         var today = new Date().toISOString().split('T')[0];
         var months = [];
-        all.forEach(function(e) { if (e.month && months.indexOf(e.month) < 0) months.push(e.month); });
+        all.forEach(function(e) { if (e._month && months.indexOf(e._month) < 0) months.push(e._month); });
         months.sort().reverse();
 
         var sel = document.getElementById('month-select');
@@ -428,8 +453,8 @@
         }
 
         var events = all;
-        if (currentTab === 'tonight') events = all.filter(function(e) { return e.date === today; });
-        else if (currentTab === 'month') { var m = sel.value || months[0]; events = all.filter(function(e) { return e.month === m; }); }
+        if (currentTab === 'tonight') events = all.filter(function(e) { return e._date === today; });
+        else if (currentTab === 'month') { var m = sel.value || months[0]; events = all.filter(function(e) { return e._month === m; }); }
 
         var scans = events.filter(function(e) { return e.type === 'scan'; }).length;
         var reqs  = events.filter(function(e) { return e.type === 'request'; }).length;
@@ -447,20 +472,51 @@
           document.getElementById('stat-avg-wait').textContent = fmtTime(avg);
         } else document.getElementById('stat-avg-wait').textContent = '—';
 
-        var reqHours = events.filter(function(e) { return e.type === 'request' && e.hour != null; });
+        var reqHours = events.filter(function(e) { return e.type === 'request' && e._hour != null; });
         if (reqHours.length) {
           var hc = {};
-          reqHours.forEach(function(e) { hc[e.hour] = (hc[e.hour] || 0) + 1; });
+          reqHours.forEach(function(e) { hc[e._hour] = (hc[e._hour] || 0) + 1; });
           var ph = parseInt(Object.keys(hc).sort(function(a,b){return hc[b]-hc[a];})[0]);
           document.getElementById('stat-peak').textContent = ph === 0 ? '12am' : ph < 12 ? ph + 'am' : ph === 12 ? '12pm' : (ph-12) + 'pm';
         } else document.getElementById('stat-peak').textContent = '—';
 
-        // Return visitor rate
-        var scanEvents = events.filter(function(e) { return e.type === 'scan' && e.visitorToken; });
-        if (scanEvents.length > 0) {
-          var returningCount = scanEvents.filter(function(e) { return e.returning; }).length;
-          document.getElementById('stat-returning').textContent = Math.round(returningCount / scanEvents.length * 100) + '%';
-        } else document.getElementById('stat-returning').textContent = '—';
+        // Avg table visit: average gap between "On my way" taps, counted only
+        // between a Begin Performing and its matching Finish Performing, so a
+        // gap can never span an overnight or forgotten-open session.
+        var timeline = events.filter(function(e) {
+          return (e.type === 'session_start' || e.type === 'session_end' || e.type === 'performance') && e._ms != null;
+        }).sort(function(a, b) { return a._ms - b._ms; });
+
+        var gaps = [];
+        var sessionOpen = false;
+        var lastPerf = null;
+        timeline.forEach(function(e) {
+          if (e.type === 'session_start') { sessionOpen = true; lastPerf = null; }
+          else if (e.type === 'session_end') { sessionOpen = false; lastPerf = null; }
+          else if (e.type === 'performance' && sessionOpen) {
+            if (lastPerf != null) gaps.push(e._ms - lastPerf);
+            lastPerf = e._ms;
+          }
+        });
+        if (gaps.length) {
+          var avgVisit = gaps.reduce(function(a, b) { return a + b; }, 0) / gaps.length;
+          document.getElementById('stat-avg-visit').textContent = fmtTime(avgVisit);
+        } else document.getElementById('stat-avg-visit').textContent = '—';
+
+        // Link clicks, by label
+        var clicks = events.filter(function(e) { return e.type === 'link_click' && e.label; });
+        var clickCounts = {};
+        clicks.forEach(function(e) { clickCounts[e.label] = (clickCounts[e.label] || 0) + 1; });
+        var labels = Object.keys(clickCounts).sort(function(a, b) { return clickCounts[b] - clickCounts[a]; });
+        var clickSection = document.getElementById('link-clicks-section');
+        if (labels.length) {
+          document.getElementById('link-clicks-list').innerHTML = labels.map(function(l) {
+            return '<div class="link-click-row"><span>' + escapeHtml(l) + '</span><span class="count">' + clickCounts[l] + '</span></div>';
+          }).join('');
+          clickSection.style.display = 'block';
+        } else {
+          clickSection.style.display = 'none';
+        }
 
       }).catch(function() {});
   }
@@ -471,11 +527,8 @@
     db.collection('venueEvents').doc(settings.activeVenue).collection('events')
       .doc(Date.now() + '_' + table + '_' + type)
       .set({
-        type: type, table: table, venue: settings.activeVenue,
+        type: type, table: table,
         timestamp: FS.serverTimestamp(),
-        date: new Date().toISOString().split('T')[0],
-        month: new Date().toISOString().slice(0, 7),
-        hour: new Date().getHours(),
         waitMs: waitMs || null
       }).catch(function() {});
   }
@@ -602,10 +655,11 @@
         colors: {},
         links: [],
         mapUrls: [],
+        sessionActive: false,
         timerMins: TIMER_MINS,
         createdAt: FS.serverTimestamp()
       }).then(function() {
-        var v = { name: name, slug: id, mapUrls: [], colors: {}, links: [], tables: tableNums };
+        var v = { name: name, slug: id, mapUrls: [], colors: {}, links: [], tables: tableNums, sessionActive: false };
         if (!fileToUpload) { finish(id, v); return; }
         uploadFloorplanPhoto(id, fileToUpload).then(function(url) {
           v.mapUrls = [url];
@@ -631,6 +685,7 @@
       document.getElementById('venue-badge').textContent = v.name;
       activeMapIndex = 0;
       renderMapViewer();
+      updateSessionUI();
     }
     closeVenueModal();
     subscribeToVenue();
@@ -642,6 +697,10 @@
 
   function escapeAttr(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function linkRowHtml(link) {
@@ -988,7 +1047,7 @@
     db.collection('venues').where('ownerUid', '==', currentUser.uid).get().then(function(snap) {
       venues = snap.docs.map(function(d) {
         var data = d.data();
-        return { name: data.name, slug: d.id, colors: data.colors || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [] };
+        return { name: data.name, slug: d.id, colors: data.colors || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], sessionActive: data.sessionActive === true };
       });
       renderVenueList();
       if (settings.activeVenue) {
@@ -997,13 +1056,17 @@
           document.getElementById('venue-badge').textContent = v.name;
           activeMapIndex = 0;
           renderMapViewer();
+          updateSessionUI();
         } else {
           // Saved venue belongs to another account or no longer exists
           settings.activeVenue = null;
           localStorage.removeItem('activeVenue');
           document.getElementById('venue-badge').textContent = 'No venue selected';
           setMapPlaceholder('Select a venue to load floor plan');
+          updateSessionUI();
         }
+      } else {
+        updateSessionUI();
       }
     }).catch(function() {});
   }
@@ -1245,24 +1308,47 @@
   }, 1000);
 
   // ─── END NIGHT ──────────────────────────────────────────────────────────────
-  document.getElementById('end-night-btn').addEventListener('click', function() {
-    if (!settings.activeVenue) return;
-    if (!confirm('End the night? This will clear all active table data for ' + (document.getElementById('venue-badge').textContent) + '.')) return;
+  // ─── SESSION CONTROL (Begin / Finish Performing) ───────────────────────────
+  function updateSessionUI() {
+    var btn = document.getElementById('session-toggle-btn');
+    var label = document.getElementById('session-status-label');
+    var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
+    if (!v) {
+      btn.disabled = true;
+      btn.className = 'session-btn off';
+      btn.textContent = 'Begin Performing';
+      label.textContent = '';
+      return;
+    }
+    btn.disabled = false;
+    if (v.sessionActive) {
+      btn.className = 'session-btn on';
+      btn.textContent = 'Finish Performing';
+      label.textContent = 'Open to new requests.';
+    } else {
+      btn.className = 'session-btn off';
+      btn.textContent = 'Begin Performing';
+      label.textContent = 'Not accepting new requests.';
+    }
+  }
 
-    db.collection('venues').doc(settings.activeVenue).collection('tables').get()
-      .then(function(snap) {
-        var batch = db.batch();
-        snap.docs.forEach(function(doc) { batch.delete(doc.ref); });
-        return batch.commit();
-      })
-      .then(function() {
-        entries = [];
-        document.getElementById('cancel-notices').innerHTML = '';
-        stopCountdown();
-        document.getElementById('heading-bar').style.display = 'none';
-        renderQueue();
-      })
-      .catch(function(e) { console.error('End night error', e); });
+  function logSessionEvent(type) {
+    db.collection('venueEvents').doc(settings.activeVenue).collection('events')
+      .doc(Date.now() + '_' + type)
+      .set({ type: type, timestamp: FS.serverTimestamp() }).catch(function() {});
+  }
+
+  document.getElementById('session-toggle-btn').addEventListener('click', function() {
+    var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
+    if (!v) return;
+    var goingActive = !v.sessionActive;
+    db.collection('venues').doc(v.slug).update({ sessionActive: goingActive }).then(function() {
+      v.sessionActive = goingActive;
+      logSessionEvent(goingActive ? 'session_start' : 'session_end');
+      updateSessionUI();
+    }).catch(function() {
+      alert('Could not update. Check your connection and try again.');
+    });
   });
 
   // ─── PERFORMER PROFILE (name + logo, one per account) ─────────────────────

@@ -96,12 +96,17 @@
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="entry-form">
   <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
   <div class="prompt">Enter your table number below.</div>
   <input type="number" class="table-input" id="table-input" placeholder="—" inputmode="numeric">
   <div class="error" id="error-msg"></div>
   <button class="btn" id="go-btn">Continue</button>
+  <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+</div>
+<div class="container" id="not-performing" style="display:none;">
+  <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+  <div class="prompt">The magician isn't performing here right now.</div>
   <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
 </div>
 
@@ -148,6 +153,11 @@
     if (colors.muted)     { r.style.setProperty('--cream-dim', colors.muted); r.style.setProperty('--text-muted', colors.muted); }
     if (data.tables) {
       validTables = data.tables.map(function(t) { return String(t).trim(); });
+    }
+    if (data.sessionActive !== true) {
+      document.getElementById('entry-form').style.display = 'none';
+      document.getElementById('not-performing').style.display = 'flex';
+      return;
     }
     document.getElementById('table-input').focus();
   }).catch(function() {
