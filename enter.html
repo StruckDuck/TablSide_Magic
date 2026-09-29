@@ -126,11 +126,7 @@
       .doc(Date.now() + '_entry_' + type)
       .set({
         type: 'entry_' + type,
-        venue: venue,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        date: new Date().toISOString().split('T')[0],
-        month: new Date().toISOString().slice(0, 7),
-        hour: new Date().getHours()
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
       }).catch(function() {});
   }
 
