@@ -115,6 +115,7 @@
     appId: "1:209355723420:web:c4bf8aeab08cc425135359"
   });
   var db = firebase.firestore();
+  db.settings({ experimentalAutoDetectLongPolling: true });
 
   var params = new URLSearchParams(window.location.search);
   var venue = params.get('venue') || 'unknown';
