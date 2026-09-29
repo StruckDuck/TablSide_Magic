@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablside</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Raleway:wght@300;400;500&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --bg:#26060f; --border:#3d5250;
+    --gold:#927b52; --gold-dim:#7a6545;
+    --cream:#eae9d6; --cream-dim:#c4bfa6;
+    --text:#eae9d6; --text-muted:#9aab9a;
+    --teal:#273534; --plum:#6f0f43;
+  }
+
+  body {
+    font-family:'Raleway',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:2rem 1.5rem;
+  }
+
+  .container {
+    width:100%; max-width:420px;
+    display:flex; flex-direction:column; align-items:center; gap:2rem;
+    background:var(--teal);
+    border:1px solid var(--border);
+    padding:2.5rem 2rem;
+  }
+
+  .logo { height:64px; width:auto; object-fit:contain; }
+
+  .rule { width:100%; display:flex; align-items:center; gap:1rem; }
+  .rule-line { flex:1; height:1px; background:var(--border); }
+  .rule-diamond { width:5px; height:5px; background:var(--gold-dim); transform:rotate(45deg); flex-shrink:0; }
+
+  .headline { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:300; color:var(--cream); text-align:center; line-height:1.3; letter-spacing:0.03em; }
+  .subtext { font-size:0.78rem; font-weight:300; color:var(--cream-dim); text-align:center; line-height:1.8; letter-spacing:0.08em; text-transform:uppercase; }
+  .after-headline { font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:300; font-style:italic; color:var(--cream); text-align:center; line-height:1.4; }
+
+  .btn-primary { width:100%; padding:1rem 2rem; background:transparent; border:1px solid var(--gold-dim); color:var(--gold); font-family:'Raleway',sans-serif; font-size:0.75rem; font-weight:500; letter-spacing:0.2em; text-transform:uppercase; cursor:pointer; transition:all 0.3s; -webkit-tap-highlight-color:transparent; }
+  .btn-primary:active { background:var(--plum); color:var(--cream); border-color:var(--plum); }
+
+  .btn-cancel { background:transparent; border:none; color:var(--text-muted); font-family:'Raleway',sans-serif; font-size:0.7rem; font-weight:300; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; text-decoration:underline; text-underline-offset:3px; -webkit-tap-highlight-color:transparent; }
+
+  .status-card { width:100%; border:1px solid var(--border); background:rgba(0,0,0,0.25); padding:1.5rem; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
+
+  .status-ring { width:48px; height:48px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; transition:all 0.8s ease; }
+  .status-ring.waiting  { border-color:var(--text-muted); }
+  .status-ring.soon     { border-color:var(--gold-dim); }
+  .status-ring.next     { border-color:var(--gold); }
+  .status-ring.incoming { border-color:var(--cream); animation:ringpulse 1.5s ease-in-out infinite; }
+  @keyframes ringpulse { 0%,100%{box-shadow:0 0 20px rgba(234,233,214,0.2)} 50%{box-shadow:0 0 35px rgba(234,233,214,0.5)} }
+
+  .status-dot { width:8px; height:8px; border-radius:50%; background:var(--text-muted); transition:width 0.8s,height 0.8s,background 0.8s; }
+  .waiting  .status-dot { width:8px;  height:8px;  background:var(--text-muted); }
+  .soon     .status-dot { width:18px; height:18px; background:var(--gold-dim); }
+  .next     .status-dot { width:28px; height:28px; background:var(--gold); animation:dotpulse 1.8s ease-in-out infinite; }
+  .incoming .status-dot { width:40px; height:40px; background:var(--cream); animation:dotpulse 0.9s ease-in-out infinite; }
+  @keyframes dotpulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(0.78);opacity:0.6} }
+
+  .status-label { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:300; color:var(--cream); text-align:center; font-style:italic; }
+  .status-sub { font-size:0.68rem; font-weight:300; color:var(--text-muted); letter-spacing:0.12em; text-transform:uppercase; text-align:center; }
+
+  .links { width:100%; display:flex; flex-direction:column; border:1px solid var(--border); background:rgba(0,0,0,0.25); }
+  .links:empty { display:none; border:none; background:none; }
+  .link { display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.25rem; border-bottom:1px solid rgba(255,255,255,0.07); text-decoration:none; color:var(--cream-dim); font-size:0.72rem; font-weight:400; letter-spacing:0.12em; text-transform:uppercase; -webkit-tap-highlight-color:transparent; }
+  .link:last-child { border-bottom:none; }
+  .link.tapped { animation:tapflash 0.4s ease forwards; }
+  @keyframes tapflash { 0%{background:var(--plum);color:var(--cream)} 100%{background:transparent;color:var(--cream-dim)} }
+  .link .arrow { font-size:0.65rem; color:var(--text-muted); }
+
+  .footer-name { font-family:'Cormorant Garamond',serif; font-size:0.75rem; font-weight:300; color:var(--text-muted); letter-spacing:0.2em; text-transform:uppercase; text-align:center; }
+
+  .screen { display:none; width:100%; flex-direction:column; align-items:center; gap:2rem; }
+  .screen.active { display:flex; }
+
+  .error-screen { text-align:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1rem; color:var(--cream-dim); }
+</style>
+</head>
+<body>
+<div class="container" id="container" style="display:none;">
+
+  <!-- SCREEN 1: Request -->
+  <div class="screen active" id="screen-landing">
+    <img class="logo" id="logo-landing" style="display:none;" alt="">
+    <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+    <div class="headline">There is a magician<br>in the room tonight.</div>
+    <div class="subtext">Request a performance for your table,<br>and they'll be with you shortly.</div>
+    <button class="btn-primary" id="btn-request">Yes &mdash; come to our table</button>
+    <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+    <div class="links" id="links-landing"></div>
+    <div class="footer-name" id="footer-landing"></div>
+  </div>
+
+  <!-- SCREEN 2: In Queue -->
+  <div class="screen" id="screen-queue">
+    <img class="logo" id="logo-queue" style="display:none;" alt="">
+    <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+    <div class="status-card">
+      <div class="status-ring waiting" id="status-ring"><div class="status-dot"></div></div>
+      <div class="status-label" id="status-label">You're on the list.</div>
+      <div class="status-sub" id="status-sub">The magician will be with you soon</div>
+    </div>
+    <button class="btn-cancel" id="btn-cancel">Never mind &mdash; cancel our request</button>
+    <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+    <div class="links" id="links-queue"></div>
+    <div class="footer-name" id="footer-queue"></div>
+  </div>
+
+  <!-- SCREEN 3: After Performance -->
+  <div class="screen" id="screen-after">
+    <img class="logo" id="logo-after" style="display:none;" alt="">
+    <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+    <div class="after-headline">Thank you for having me.</div>
+    <div class="links" id="links-after"></div>
+    <div class="footer-name" id="footer-after"></div>
+  </div>
+
+</div>
+
+<div class="error-screen" id="error-screen" style="display:none;">Something went wrong. Please ask a member of staff for help.</div>
+
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
+    authDomain: "tablside-magic.firebaseapp.com",
+    projectId: "tablside-magic",
+    storageBucket: "tablside-magic.firebasestorage.app",
+    messagingSenderId: "209355723420",
+    appId: "1:209355723420:web:c4bf8aeab08cc425135359"
+  });
+  var db = firebase.firestore();
+  var FS = firebase.firestore.FieldValue;
+  var TIMER_MINS = 5;
+
+  var params = new URLSearchParams(window.location.search);
+  var venue = params.get('venue') || '';
+  var table = params.get('table') || '';
+  var tableRef = venue && table ? db.collection('venues').doc(venue).collection('tables').doc('table_' + table) : null;
+  var venueRef = venue ? db.collection('venues').doc(venue) : null;
+  var venueData = null;
+  var unsubscribe = null;
+  var transitionInterval = null;
+
+  function showError() {
+    document.getElementById('container').style.display = 'none';
+    document.getElementById('error-screen').style.display = 'block';
+  }
+
+  if (!tableRef) {
+    showError();
+  } else {
+
+    // ─── VENUE + PERFORMER SETUP ────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escapeAttr(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    }
+
+    function applyColors(colors) {
+      colors = colors || {};
+      var r = document.documentElement;
+      if (colors.bg)        r.style.setProperty('--bg', colors.bg);
+      if (colors.box)       r.style.setProperty('--teal', colors.box);
+      if (colors.accent)    r.style.setProperty('--plum', colors.accent);
+      if (colors.highlight) { r.style.setProperty('--gold', colors.highlight); r.style.setProperty('--gold-dim', colors.highlight); }
+      if (colors.text)      { r.style.setProperty('--cream', colors.text); r.style.setProperty('--text', colors.text); }
+      if (colors.muted)     { r.style.setProperty('--cream-dim', colors.muted); r.style.setProperty('--text-muted', colors.muted); }
+    }
+
+    function renderLinksForScreen(screenName, containerId) {
+      var links = ((venueData && venueData.links) || []).filter(function(l) {
+        return l.screens && l.screens.indexOf(screenName) > -1 && /^https:\/\//.test(l.url);
+      });
+      document.getElementById(containerId).innerHTML = links.map(function(l) {
+        return '<a class="link" href="' + escapeAttr(l.url) + '" target="_blank" data-label="' + escapeAttr(l.label) + '">' +
+          '<span>' + escapeHtml(l.label) + '</span><span class="arrow">\u203a</span></a>';
+      }).join('');
+    }
+
+    function applyPerformer(profile) {
+      profile = profile || {};
+      if (profile.name) document.title = profile.name;
+      ['landing', 'queue', 'after'].forEach(function(screen) {
+        var img = document.getElementById('logo-' + screen);
+        var footer = document.getElementById('footer-' + screen);
+        if (profile.logoUrl) {
+          img.src = profile.logoUrl;
+          img.style.display = 'block';
+          footer.textContent = '';
+        } else if (profile.name) {
+          img.style.display = 'none';
+          footer.textContent = profile.name;
+        } else {
+          img.style.display = 'none';
+          footer.textContent = '';
+        }
+      });
+    }
+
+    venueRef.get().then(function(snap) {
+      if (!snap.exists) { showError(); return; }
+      venueData = snap.data();
+      applyColors(venueData.colors);
+      renderLinksForScreen('landing', 'links-landing');
+      renderLinksForScreen('queue', 'links-queue');
+      renderLinksForScreen('after', 'links-after');
+      document.getElementById('container').style.display = 'flex';
+
+      if (venueData.ownerUid) {
+        db.collection('performers').doc(venueData.ownerUid).get().then(function(pSnap) {
+          applyPerformer(pSnap.exists ? pSnap.data() : null);
+        }).catch(function() {});
+      }
+
+      init();
+    }).catch(function() {
+      showError();
+    });
+
+    // Tap flash + click tracking, delegated across all three link containers
+    document.body.addEventListener('click', function(e) {
+      var el = e.target.closest('.link');
+      if (!el) return;
+      el.classList.remove('tapped');
+      void el.offsetWidth;
+      el.classList.add('tapped');
+      setTimeout(function() { el.classList.remove('tapped'); }, 400);
+      if (el.dataset.label) logEvent('link_click', el.dataset.label);
+    });
+
+    // ─── SCREEN MANAGEMENT ──────────────────────────────────────────────────
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+    }
+
+    function setStatus(state, label, sub) {
+      document.getElementById('status-ring').className = 'status-ring ' + state;
+      document.getElementById('status-label').textContent = label;
+      document.getElementById('status-sub').textContent = sub;
+    }
+
+    // ─── TRANSITION TIMER ───────────────────────────────────────────────────
+    function scheduleTransition(onMyWayAt, timerMins) {
+      if (transitionInterval) clearInterval(transitionInterval);
+      var timerMs = (timerMins || TIMER_MINS) * 60 * 1000;
+      if (Date.now() - onMyWayAt >= timerMs) { doTransition(); return; }
+      transitionInterval = setInterval(function() {
+        if (Date.now() - onMyWayAt >= timerMs) {
+          clearInterval(transitionInterval);
+          transitionInterval = null;
+          doTransition();
+        }
+      }, 500);
+    }
+
+    function doTransition() {
+      if (transitionInterval) { clearInterval(transitionInterval); transitionInterval = null; }
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      tableRef.set({ status: 'reset', resetAt: FS.serverTimestamp() }).catch(function() {});
+      showScreen('screen-after');
+    }
+
+    // ─── FIREBASE LISTENER ──────────────────────────────────────────────────
+    function listenForUpdates() {
+      if (unsubscribe) unsubscribe();
+      unsubscribe = tableRef.onSnapshot(function(snap) {
+        if (!snap.exists || snap.data().status === 'reset') {
+          if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+          if (transitionInterval) { clearInterval(transitionInterval); transitionInterval = null; }
+          showScreen('screen-landing');
+          return;
+        }
+        var data = snap.data();
+
+        if (data.status === 'on_my_way') {
+          setStatus('incoming', 'On the way.', 'Your magician is headed to your table');
+          var onMyWayAt = data.onMyWayAt ? data.onMyWayAt.toMillis() : Date.now();
+          scheduleTransition(onMyWayAt, data.timerMins);
+          return;
+        }
+
+        var pos = data.queuePosition || 1;
+        if (pos <= 1)      setStatus('next',    "You're next.",   'The magician will be with you shortly');
+        else if (pos === 2) setStatus('soon',   'Almost time.',   'One table ahead of you');
+        else                setStatus('waiting', "You're on the list.", (pos - 1) + ' table' + (pos > 2 ? 's' : '') + ' ahead of you');
+      });
+    }
+
+    // ─── EVENTS ──────────────────────────────────────────────────────────────
+    function logEvent(type, label) {
+      var data = { type: type, table: table, timestamp: FS.serverTimestamp() };
+      if (label) data.label = label;
+      db.collection('venueEvents').doc(venue).collection('events')
+        .doc(Date.now() + '_' + table + '_' + type)
+        .set(data).catch(function() {});
+    }
+
+    // ─── BUTTONS ─────────────────────────────────────────────────────────────
+    document.getElementById('btn-request').addEventListener('click', function() {
+      tableRef.get().then(function(snap) {
+        var status = snap.exists ? snap.data().status : null;
+        if (status === 'requested' || status === 'on_my_way') return;
+        tableRef.set({ table: table, venue: venue, status: 'requested', requestedAt: FS.serverTimestamp() })
+          .then(function() {
+            logEvent('request');
+            showScreen('screen-queue');
+            listenForUpdates();
+          })
+          .catch(function() { showScreen('screen-landing'); });
+      });
+    });
+
+    document.getElementById('btn-cancel').addEventListener('click', function() {
+      if (transitionInterval) { clearInterval(transitionInterval); transitionInterval = null; }
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      tableRef.set({ status: 'reset', resetAt: FS.serverTimestamp() }).catch(function() {});
+      logEvent('cancellation');
+      showScreen('screen-landing');
+    });
+
+    // ─── INIT ────────────────────────────────────────────────────────────────
+    function init() {
+      if (transitionInterval) { clearInterval(transitionInterval); transitionInterval = null; }
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+
+      tableRef.get().then(function(snap) {
+        var prevStatus = snap.exists ? snap.data().status : null;
+
+        tableRef.set({ table: table, venue: venue, status: 'scanned', scannedAt: FS.serverTimestamp() }, { merge: true })
+          .catch(function() {});
+        logEvent('scan');
+
+        if (prevStatus === 'requested') {
+          showScreen('screen-queue');
+          listenForUpdates();
+        } else if (prevStatus === 'on_my_way') {
+          showScreen('screen-queue');
+          snap.ref.get().then(function(fresh) {
+            var d = fresh.data();
+            setStatus('incoming', 'On the way.', 'Your magician is headed to your table');
+            var onMyWayAt = d.onMyWayAt ? d.onMyWayAt.toMillis() : Date.now();
+            scheduleTransition(onMyWayAt, d.timerMins);
+            listenForUpdates();
+          });
+        } else {
+          showScreen('screen-landing');
+        }
+      }).catch(function() {
+        showScreen('screen-landing');
+      });
+    }
+  }
+</script>
+</body>
+</html>

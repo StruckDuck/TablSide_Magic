@@ -215,6 +215,24 @@
   <button class="action-btn" id="save-settings-btn">Save Settings</button>
   <div class="saved-msg" id="settings-saved">Settings saved</div>
   <div class="setting-row"><div class="setting-label" id="account-email">Account</div><button class="venue-btn" id="signout-btn">Sign out</button></div>
+  <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
+    <div class="setting-label">Performer name</div>
+    <input type="text" class="short-input" id="performer-name" style="width:100%;" maxlength="60" placeholder="Shown to guests instead of a logo">
+  </div>
+  <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
+    <div class="setting-label">Logo <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
+    <div id="performer-logo-preview" style="display:none;margin-bottom:0.25rem;"><img id="performer-logo-img" style="height:48px;width:auto;display:block;" alt="Logo"></div>
+    <div style="display:flex;gap:0.5rem;width:100%;">
+      <label class="file-label" id="performer-logo-label" style="flex:1;">
+        <span id="performer-logo-text">+ Upload logo</span>
+        <input type="file" id="performer-logo-input" accept="image/*" style="display:none;">
+      </label>
+      <button type="button" class="venue-btn danger" id="performer-logo-remove-btn" style="display:none;">Remove</button>
+    </div>
+  </div>
+  <button class="action-btn" id="save-performer-btn">Save Performer Info</button>
+  <div class="saved-msg" id="performer-saved">Saved</div>
+  <div class="error-msg" id="performer-error" style="display:none;"></div>
 </div>
 
 <div class="modal-overlay" id="venue-modal">
@@ -1194,6 +1212,77 @@
       .catch(function(e) { console.error('End night error', e); });
   });
 
+  // ─── PERFORMER PROFILE (name + logo, one per account) ─────────────────────
+  var performerLogoFile = null;
+  var performerRemoveLogo = false;
+
+  function loadPerformerProfile() {
+    db.collection('performers').doc(currentUser.uid).get().then(function(snap) {
+      var data = snap.exists ? snap.data() : {};
+      document.getElementById('performer-name').value = data.name || '';
+      if (data.logoUrl) {
+        document.getElementById('performer-logo-img').src = data.logoUrl;
+        document.getElementById('performer-logo-preview').style.display = 'block';
+        document.getElementById('performer-logo-remove-btn').style.display = 'inline-block';
+      }
+    }).catch(function() {});
+  }
+
+  document.getElementById('performer-logo-label').addEventListener('click', function() {
+    document.getElementById('performer-logo-input').click();
+  });
+  document.getElementById('performer-logo-input').addEventListener('change', function() {
+    var file = this.files[0]; if (!file) return;
+    performerLogoFile = file;
+    performerRemoveLogo = false;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      document.getElementById('performer-logo-img').src = ev.target.result;
+      document.getElementById('performer-logo-preview').style.display = 'block';
+      document.getElementById('performer-logo-remove-btn').style.display = 'inline-block';
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('performer-logo-remove-btn').addEventListener('click', function() {
+    performerLogoFile = null;
+    performerRemoveLogo = true;
+    document.getElementById('performer-logo-preview').style.display = 'none';
+    document.getElementById('performer-logo-remove-btn').style.display = 'none';
+    document.getElementById('performer-logo-input').value = '';
+  });
+
+  document.getElementById('save-performer-btn').addEventListener('click', function() {
+    var name = document.getElementById('performer-name').value.trim();
+    var errorEl = document.getElementById('performer-error');
+    errorEl.style.display = 'none';
+
+    function writeProfile(logoUrl) {
+      var data = { name: name };
+      if (logoUrl !== undefined) data.logoUrl = logoUrl;
+      db.collection('performers').doc(currentUser.uid).set(data, { merge: true })
+        .then(function() { performerLogoFile = null; performerRemoveLogo = false; showSaved('performer-saved'); })
+        .catch(function() {
+          errorEl.textContent = 'Could not save. Check your connection and try again.';
+          errorEl.style.display = 'block';
+        });
+    }
+
+    if (performerLogoFile) {
+      var ref = storage.ref('performer-logos/' + currentUser.uid + '/logo');
+      ref.put(performerLogoFile).then(function(snap) { return snap.ref.getDownloadURL(); })
+        .then(function(url) { writeProfile(url); })
+        .catch(function() {
+          errorEl.textContent = 'Could not upload the logo. Check your connection and try again.';
+          errorEl.style.display = 'block';
+        });
+    } else if (performerRemoveLogo) {
+      storage.ref('performer-logos/' + currentUser.uid + '/logo').delete().catch(function() {});
+      writeProfile('');
+    } else {
+      writeProfile(undefined);
+    }
+  });
+
   // ─── INIT ───────────────────────────────────────────────────────────────────
   if (settings.activeVenue) {
     subscribeToVenue();
@@ -1210,6 +1299,7 @@
     document.getElementById('account-email').textContent = user.email;
     document.body.classList.remove('pending');
     loadVenues();
+    loadPerformerProfile();
   });
 </script>
 </body>

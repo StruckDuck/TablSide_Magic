@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400&family=Raleway:wght@300;400;500&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --bg:#26060f; --border:#3d5250;
+    --gold:#927b52; --gold-dim:#7a6545;
+    --cream:#eae9d6; --cream-dim:#c4bfa6;
+    --text:#eae9d6; --text-muted:#9aab9a;
+    --teal:#273534; --plum:#6f0f43;
+  }
+
+  body {
+    font-family:'Raleway',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:2rem 1.5rem;
+  }
+
+  .container {
+    width:100%; max-width:340px;
+    display:flex; flex-direction:column; align-items:center; gap:1.75rem;
+    background:var(--teal);
+    border:1px solid var(--border);
+    padding:2.5rem 2rem;
+  }
+
+  .rule { width:100%; display:flex; align-items:center; gap:1rem; }
+  .rule-line { flex:1; height:1px; background:var(--border); }
+  .rule-diamond { width:5px; height:5px; background:var(--gold-dim); transform:rotate(45deg); flex-shrink:0; }
+
+  .prompt {
+    font-size:0.72rem;
+    font-weight:300;
+    color:var(--cream-dim);
+    text-align:center;
+    line-height:1.8;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+  }
+
+  .table-input {
+    width:72px;
+    height:72px;
+    padding:0;
+    background:rgba(0,0,0,0.25);
+    border:1px solid var(--border);
+    color:var(--cream);
+    font-family:'Raleway',sans-serif;
+    font-size:1.4rem;
+    font-weight:300;
+    text-align:center;
+    letter-spacing:0.1em;
+    outline:none;
+    -webkit-appearance:none;
+  }
+
+  .table-input::placeholder { color:var(--text-muted); font-size:0.8rem; letter-spacing:0.1em; }
+  .table-input:focus { border-color:var(--gold-dim); }
+
+  .btn {
+    width:100%; padding:0.9rem 2rem;
+    background:transparent;
+    border:1px solid var(--gold-dim);
+    color:var(--gold);
+    font-family:'Raleway',sans-serif;
+    font-size:0.72rem; font-weight:500;
+    letter-spacing:0.2em; text-transform:uppercase;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .btn:active { background:var(--plum); color:var(--cream); border-color:var(--plum); }
+
+  .error {
+    font-size:0.65rem;
+    color:#f5a0a0;
+    text-align:center;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    min-height:1rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+  <div class="prompt">Enter your table number below.</div>
+  <input type="number" class="table-input" id="table-input" placeholder="—" inputmode="numeric">
+  <div class="error" id="error-msg"></div>
+  <button class="btn" id="go-btn">Continue</button>
+  <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
+</div>
+
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
+    authDomain: "tablside-magic.firebaseapp.com",
+    projectId: "tablside-magic",
+    storageBucket: "tablside-magic.firebasestorage.app",
+    messagingSenderId: "209355723420",
+    appId: "1:209355723420:web:c4bf8aeab08cc425135359"
+  });
+  var db = firebase.firestore();
+
+  var params = new URLSearchParams(window.location.search);
+  var venue = params.get('venue') || 'unknown';
+  var validTables = [];
+
+  // Log entry page landing
+  function logEntryEvent(type) {
+    db.collection('venueEvents').doc(venue).collection('events')
+      .doc(Date.now() + '_entry_' + type)
+      .set({
+        type: 'entry_' + type,
+        venue: venue,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        date: new Date().toISOString().split('T')[0],
+        month: new Date().toISOString().slice(0, 7),
+        hour: new Date().getHours()
+      }).catch(function() {});
+  }
+
+  logEntryEvent('landed');
+
+  // Load venue colors
+  db.collection('venueConfigs').doc(venue).get().then(function(snap) {
+    if (!snap.exists) return;
+    var cfg = snap.data();
+    var r = document.documentElement;
+    if (cfg.colorBg)        r.style.setProperty('--bg', cfg.colorBg);
+    if (cfg.colorBox)       r.style.setProperty('--teal', cfg.colorBox);
+    if (cfg.colorAccent)    r.style.setProperty('--plum', cfg.colorAccent);
+    if (cfg.colorHighlight) { r.style.setProperty('--gold', cfg.colorHighlight); r.style.setProperty('--gold-dim', cfg.colorHighlight); }
+    if (cfg.colorText)      { r.style.setProperty('--cream', cfg.colorText); r.style.setProperty('--text', cfg.colorText); }
+    if (cfg.colorMuted)     { r.style.setProperty('--cream-dim', cfg.colorMuted); r.style.setProperty('--text-muted', cfg.colorMuted); }
+  }).catch(function() {});
+
+  // Load valid table numbers
+  db.collection('venuePresets').doc(venue).get().then(function(snap) {
+    if (snap.exists && snap.data().tables) {
+      validTables = snap.data().tables.map(function(t) { return String(t).trim(); });
+    }
+    document.getElementById('table-input').focus();
+  }).catch(function() {});
+
+  function go() {
+    var input = document.getElementById('table-input').value.trim();
+    var errorEl = document.getElementById('error-msg');
+    errorEl.textContent = '';
+    if (!input) return;
+    if (validTables.length && !validTables.includes(input)) {
+      errorEl.textContent = 'Check the number and try again';
+      return;
+    }
+    logEntryEvent('proceeded');
+    window.location.href = 'table.html?venue=' + encodeURIComponent(venue) + '&table=' + encodeURIComponent(input);
+  }
+
+  document.getElementById('go-btn').addEventListener('click', go);
+  document.getElementById('table-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') go();
+  });
+</script>
+</body>
+</html>
