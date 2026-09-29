@@ -137,25 +137,25 @@
   logEntryEvent('landed');
 
   // Load venue colors
-  db.collection('venueConfigs').doc(venue).get().then(function(snap) {
-    if (!snap.exists) return;
-    var cfg = snap.data();
+  // Load the venue's colors and valid table numbers from the same document
+  db.collection('venues').doc(venue).get().then(function(snap) {
+    if (!snap.exists) { document.getElementById('table-input').focus(); return; }
+    var data = snap.data();
+    var colors = data.colors || {};
     var r = document.documentElement;
-    if (cfg.colorBg)        r.style.setProperty('--bg', cfg.colorBg);
-    if (cfg.colorBox)       r.style.setProperty('--teal', cfg.colorBox);
-    if (cfg.colorAccent)    r.style.setProperty('--plum', cfg.colorAccent);
-    if (cfg.colorHighlight) { r.style.setProperty('--gold', cfg.colorHighlight); r.style.setProperty('--gold-dim', cfg.colorHighlight); }
-    if (cfg.colorText)      { r.style.setProperty('--cream', cfg.colorText); r.style.setProperty('--text', cfg.colorText); }
-    if (cfg.colorMuted)     { r.style.setProperty('--cream-dim', cfg.colorMuted); r.style.setProperty('--text-muted', cfg.colorMuted); }
-  }).catch(function() {});
-
-  // Load valid table numbers
-  db.collection('venuePresets').doc(venue).get().then(function(snap) {
-    if (snap.exists && snap.data().tables) {
-      validTables = snap.data().tables.map(function(t) { return String(t).trim(); });
+    if (colors.bg)        r.style.setProperty('--bg', colors.bg);
+    if (colors.box)       r.style.setProperty('--teal', colors.box);
+    if (colors.accent)    r.style.setProperty('--plum', colors.accent);
+    if (colors.highlight) { r.style.setProperty('--gold', colors.highlight); r.style.setProperty('--gold-dim', colors.highlight); }
+    if (colors.text)      { r.style.setProperty('--cream', colors.text); r.style.setProperty('--text', colors.text); }
+    if (colors.muted)     { r.style.setProperty('--cream-dim', colors.muted); r.style.setProperty('--text-muted', colors.muted); }
+    if (data.tables) {
+      validTables = data.tables.map(function(t) { return String(t).trim(); });
     }
     document.getElementById('table-input').focus();
-  }).catch(function() {});
+  }).catch(function() {
+    document.getElementById('table-input').focus();
+  });
 
   function go() {
     var input = document.getElementById('table-input').value.trim();

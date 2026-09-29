@@ -212,9 +212,24 @@
       });
     }
 
+    function showInvalidTable() {
+      document.getElementById('container').style.display = 'none';
+      var el = document.getElementById('error-screen');
+      el.textContent = "This table number isn't recognized. Please check with a member of staff.";
+      el.style.display = 'block';
+    }
+
     venueRef.get().then(function(snap) {
       if (!snap.exists) { showError(); return; }
       venueData = snap.data();
+
+      var knownTables = (venueData.tables || []).map(function(t) { return String(t).trim(); });
+      if (knownTables.length && knownTables.indexOf(table) === -1) {
+        applyColors(venueData.colors);
+        showInvalidTable();
+        return;
+      }
+
       applyColors(venueData.colors);
       renderLinksForScreen('landing', 'links-landing');
       renderLinksForScreen('queue', 'links-queue');
