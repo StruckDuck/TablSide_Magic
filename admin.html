@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400&family=Raleway:wght@300;400;500;600&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -910,9 +911,38 @@
     });
   }
 
-  function openQRGenerator(s) {
-    localStorage.setItem('qr_preselect', s);
-    window.open('qr.html', '_blank');
+  function downloadVenueQR(s) {
+    var v = venues.find(function(v) { return v.slug === s; });
+    var url = entryUrlFor(s);
+    var scratch = document.createElement('div');
+    scratch.style.position = 'absolute';
+    scratch.style.left = '-9999px';
+    document.body.appendChild(scratch);
+
+    new QRCode(scratch, {
+      text: url,
+      width: 800,
+      height: 800,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    setTimeout(function() {
+      var canvas = scratch.querySelector('canvas');
+      var img = scratch.querySelector('img');
+      var dataUrl = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
+      document.body.removeChild(scratch);
+      if (!dataUrl) { alert('Could not generate the QR code. Try again.'); return; }
+
+      var nameSlug = (v ? v.name : s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      var a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'tablside-' + nameSlug + '-qr.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, 200);
   }
 
   function renderMapViewer() {
@@ -1015,7 +1045,7 @@
           '<button class="venue-btn" data-action="customize" data-slug="' + v.slug + '">Customize</button>' +
           '<button class="venue-btn" data-action="rename" data-slug="' + v.slug + '">Rename</button>' +
           '<button class="venue-btn" data-action="map" data-slug="' + v.slug + '">Map</button>' +
-          '<button class="venue-btn" data-action="qr" data-slug="' + v.slug + '">QR Codes</button>' +
+          '<button class="venue-btn" data-action="qr" data-slug="' + v.slug + '">Download QR</button>' +
           '<button class="venue-btn danger" data-action="delete" data-slug="' + v.slug + '">Delete</button>' +
         '</div>' +
       '</div>';
@@ -1029,7 +1059,7 @@
       else if (a === 'customize') openCustomize(s);
       else if (a === 'rename')    renameVenue(s);
       else if (a === 'map')       openFloorPlanPanel(s);
-      else if (a === 'qr')        openQRGenerator(s);
+      else if (a === 'qr')        downloadVenueQR(s);
       else if (a === 'delete')    deleteVenue(s);
     };
   }
