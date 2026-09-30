@@ -685,8 +685,8 @@
   // ─── APPEARANCE ─────────────────────────────────────────────────────────────
   ['bg','box','accent','highlight','text','muted'].forEach(function(k) {
     var p = document.getElementById('c-'+k+'-p'), h = document.getElementById('c-'+k+'-h');
-    p.addEventListener('input', function() { h.value = p.value; });
-    h.addEventListener('input', function() { if (/^#[0-9a-fA-F]{6}$/.test(h.value)) p.value = h.value; });
+    p.addEventListener('input', function() { h.value = p.value; updateGuestPreview(); });
+    h.addEventListener('input', function() { if (/^#[0-9a-fA-F]{6}$/.test(h.value)) p.value = h.value; updateGuestPreview(); });
   });
 
   function linkRowHtml(link) {
@@ -767,10 +767,8 @@
     });
   });
 
-  // Refresh on every relevant edit: colors, fonts, and the link rows
-  ['c-bg-h','c-box-h','c-accent-h','c-highlight-h','c-text-h','c-muted-h'].forEach(function(id) {
-    document.getElementById(id).addEventListener('input', updateGuestPreview);
-  });
+  // Refresh on every relevant edit: fonts and the link rows (colors are wired
+  // above, in the picker/hex sync block, so both input paths trigger a refresh)
   document.getElementById('c-font-display').addEventListener('change', updateGuestPreview);
   document.getElementById('c-font-body').addEventListener('change', updateGuestPreview);
   document.getElementById('link-list').addEventListener('input', updateGuestPreview);
