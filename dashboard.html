@@ -15,7 +15,7 @@
   :root {
     --bg:#f5efe9; --surface:#fff; --surface2:#efe4db; --border:#ddccc0;
     --text:#1a1612; --muted:#8f7d74; --gold:#a3854f; --teal:#630000;
-    --plum:#d83636; --red:#a01a1a;
+    --plum:#d83636; --red:#a01a1a; --cream:#eae1d7;
   }
   html, body { height:100%; }
   body { font-family:'Raleway',sans-serif; background:var(--bg); color:var(--text); }
@@ -23,11 +23,14 @@
   a { color:inherit; }
 
   /* HEADER */
-  .app-header { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.75rem; background:var(--surface); border-bottom:1px solid var(--border); }
-  .header-wordmark { font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:500; color:var(--teal); letter-spacing:0.18em; text-transform:uppercase; }
+  .app-header { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.75rem; background:var(--teal); border-bottom:1px solid var(--teal); }
+  .header-wordmark { display:flex; align-items:center; height:26px; }
+  .header-wordmark svg { height:100%; width:auto; display:block; }
   .header-actions { display:flex; align-items:center; gap:1.25rem; }
-  .header-link { font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); text-decoration:none; cursor:pointer; background:none; border:none; font-family:'Raleway',sans-serif; }
-  .header-link:hover { color:var(--teal); }
+  .header-link { font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--cream); opacity:0.75; text-decoration:none; cursor:pointer; background:none; border:none; font-family:'Raleway',sans-serif; }
+  .header-link:hover { opacity:1; color:var(--gold); }
+  .app-header .btn-outline { border-color:rgba(234,225,215,0.4); color:var(--cream); }
+  .app-header .btn-outline:hover { border-color:var(--cream); color:var(--cream); background:rgba(234,225,215,0.1); }
   .btn { font-family:'Raleway',sans-serif; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .btn-outline { background:none; border:1px solid var(--border); color:var(--muted); font-size:0.66rem; letter-spacing:0.1em; text-transform:uppercase; padding:7px 14px; }
   .btn-outline:hover { border-color:var(--teal); color:var(--teal); }
@@ -131,7 +134,46 @@
 <body class="pending">
 
 <div class="app-header">
-  <div class="header-wordmark">TablSide</div>
+  <div class="header-wordmark">
+    <svg viewBox="0 0 371.5 103.5" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#EAE1D7" d="M11.598,15.299c0-0.549,0.219-0.877,0.769-0.877h46.975c0.551,0,0.879,0.328,0.879,0.877v9.109
+        c0,0.551-0.328,0.879-0.879,0.879H42.989c-0.551,0-0.879,0.329-0.879,0.877v64.209c0,0.548-0.329,0.878-0.879,0.878H30.476
+        c-0.55,0-0.768-0.33-0.768-0.878V26.164c0-0.548-0.329-0.877-0.879-0.877H12.366c-0.55,0-0.769-0.328-0.769-0.879V15.299z"/>
+      <path fill="#EAE1D7" d="M89.525,54.702c0.546-0.219,0.874-0.55,0.874-1.099v-4.5c0-5.598-2.304-8.891-8.118-8.891
+        c-6.147,0-9.331,3.183-9.441,9.33c0,0.548-0.218,0.769-0.768,0.769H61.756c-0.55,0-0.879-0.221-0.879-0.769
+        c0.329-11.305,7.795-17.23,21.511-17.23c13.174,0,20.089,7.132,20.089,17.778v26.673c0,4.499,0.658,9.107,0.986,13.609
+        c0.11,0.548-0.219,0.878-0.769,0.878H92.485c-0.546,0-0.874-0.33-0.874-0.878l-0.99-9.987h-0.328
+        c-1.976,8.012-7.134,12.182-15.585,12.182c-11.306,0-15.806-7.464-15.806-16.463C58.902,57.335,79.645,59.311,89.525,54.702z
+        M79.974,84.336c7.794,0,10.319-6.366,10.319-12.842v-9.549c0-0.549-0.329-0.877-0.768-0.549
+        c-6.477,3.733-18.333,1.976-18.333,12.513C71.192,79.617,73.39,84.336,79.974,84.336z"/>
+      <path fill="#EAE1D7" d="M139.354,92.567c-8.451,0-14.159-4.39-15.695-12.182h-0.328v9.987c0,0.548-0.332,0.878-0.879,0.878
+        h-10.427c-0.55,0-0.768-0.33-0.768-0.878v-77.27c0-0.549,0.218-0.877,0.768-0.877h10.427c0.547,0,0.879,0.328,0.879,0.877v31.39
+        h0.328c1.536-7.791,7.244-12.181,15.695-12.181c12.731,0,18.549,8.89,18.549,30.072
+        C157.902,83.677,152.085,92.567,139.354,92.567z M134.414,42.848c-9.22,0-10.866,7.354-10.866,19.647
+        c0,12.183,1.646,19.535,10.866,19.535c8.012,0,11.087-5.595,11.087-19.646C145.501,48.444,142.426,42.848,134.414,42.848z"/>
+      <path fill="#EAE1D7" d="M165.365,13.104c0-0.549,0.329-0.877,0.879-0.877h10.315c0.55,0,0.879,0.328,0.879,0.877v77.27
+        c0,0.548-0.329,0.878-0.879,0.878h-10.315c-0.55,0-0.879-0.33-0.879-0.878V13.104z"/>
+      <path fill="#EAE1D7" d="M231.765,36.043c0,0.55-0.218,0.878-0.768,0.878h-11.413c-0.55,0-0.878-0.328-0.878-0.878
+        c-0.111-7.464-2.854-12.073-9.549-12.073c-6.696,0-9.111,4.062-9.111,9.77c0,17.34,33.148,9.22,33.148,36.437
+        c0,14.051-8.452,22.392-23.489,22.392c-16.242,0-24.144-9.548-24.365-25.573c-0.11-0.549,0.222-0.877,0.768-0.877h11.416
+        c0.547,0,0.768,0.328,0.876,0.877c0.11,9.33,3.294,14.599,11.526,14.599c6.805,0,10.205-4.062,10.205-10.866
+        c0-18.55-33.145-10.208-33.145-36.331c0-13.389,7.573-21.4,21.95-21.4C223.535,12.995,231.547,22.103,231.765,36.043z"/>
+      <path fill="#EAE1D7" d="M252.29,12.115c0.55,0,0.878,0.221,0.878,0.88v9.767c0,0.659-0.328,0.878-0.878,0.878h-11.084
+        c-0.55,0-0.769-0.219-0.769-0.878v-9.767c0-0.659,0.219-0.88,0.769-0.88H252.29z M251.961,33.628c0.55,0,0.879,0.33,0.879,0.879
+        v55.866c0,0.548-0.329,0.878-0.879,0.878h-10.427c-0.55,0-0.769-0.33-0.769-0.878V34.507c0-0.549,0.219-0.879,0.769-0.879
+        H251.961z"/>
+      <path fill="#EAE1D7" d="M278.74,32.313c8.344,0,14.159,4.39,15.695,12.181h0.329v-31.39c0-0.549,0.331-0.877,0.878-0.877h10.32
+        c0.547,0,0.875,0.328,0.875,0.877v77.27c0,0.548-0.328,0.878-0.875,0.878h-10.32c-0.547,0-0.878-0.33-0.878-0.878v-9.987h-0.329
+        c-1.647,7.792-7.243,12.182-15.695,12.182c-12.73,0-18.549-8.891-18.549-30.183C260.191,41.202,266.01,32.313,278.74,32.313z
+        M283.681,82.03c9.219,0,10.865-7.353,10.865-19.646c0-12.183-1.646-19.537-10.865-19.537c-8.012,0-11.088,5.597-11.088,19.647
+        C272.593,76.436,275.669,82.03,283.681,82.03z"/>
+      <path fill="#EAE1D7" d="M359.082,57.007c0,2.304-0.219,5.269-0.44,6.805h-32.269c0,10.317,1.318,18.769,10.865,18.769
+        c6.806,0,9.33-4.721,9.441-11.634c0-0.55,0.328-0.879,0.879-0.879h10.427c0.55,0,0.768,0.329,0.768,0.879
+        c-0.329,14.048-7.354,21.621-21.404,21.621c-16.573,0-23.156-10.865-23.156-30.512c0-18.989,6.477-29.743,22.606-29.743
+        C352.605,32.313,359.082,42.519,359.082,57.007z M326.701,57.446h20.089c0.328-10.537-2.854-15.477-9.88-15.477
+        C328.131,41.97,326.813,49.214,326.701,57.446z"/>
+    </svg>
+  </div>
   <div class="header-actions">
     <span id="account-email" class="header-link" style="cursor:default;"></span>
     <button class="header-link" id="performer-info-link">Performer Info</button>
