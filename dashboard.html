@@ -10,7 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500&family=Raleway:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500&family=Raleway:wght@300;400;500;600&family=Playfair+Display&family=Abril+Fatface&family=Cinzel&family=Fraunces&family=Bodoni+Moda&family=Inter&family=Work+Sans&family=Jost&family=Outfit&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
   :root {
     --bg:#f4f2ee; --surface:#fff; --surface2:#ede9e2; --border:#d6d0c6;
@@ -192,6 +192,8 @@
           <div class="color-row"><div class="setting-label">Highlight color</div><div class="color-inputs"><input type="color" id="c-highlight-p" value="#927b52"><input type="text" class="hex-input" id="c-highlight-h" value="#927b52" maxlength="7"></div></div>
           <div class="color-row"><div class="setting-label">Text color</div><div class="color-inputs"><input type="color" id="c-text-p" value="#eae9d6"><input type="text" class="hex-input" id="c-text-h" value="#eae9d6" maxlength="7"></div></div>
           <div class="color-row"><div class="setting-label">Muted text</div><div class="color-inputs"><input type="color" id="c-muted-p" value="#9aab9a"><input type="text" class="hex-input" id="c-muted-h" value="#9aab9a" maxlength="7"></div></div>
+          <div class="color-row"><div class="setting-label">Headline font</div><select id="c-font-display"></select></div>
+          <div class="color-row" style="border-bottom:none;"><div class="setting-label">Body font</div><select id="c-font-body"></select></div>
         </div>
         <div class="panel-block">
           <div class="form-label">Links <span style="text-transform:none;letter-spacing:0;">(up to 6, shown on the screens you choose)</span></div>
@@ -332,6 +334,24 @@
   var MAX_PHOTOS = 8;
   var TIMER_MINS = 5;
   var DEFAULT_COLORS = { bg:'#26060f', box:'#273534', accent:'#6f0f43', highlight:'#927b52', text:'#eae9d6', muted:'#9aab9a' };
+  var DEFAULT_FONTS = { display: 'Cormorant Garamond', body: 'Raleway' };
+  var DISPLAY_FONTS = ['Cormorant Garamond', 'Playfair Display', 'Abril Fatface', 'Cinzel', 'Fraunces', 'Bodoni Moda'];
+  var BODY_FONTS = ['Raleway', 'Inter', 'Work Sans', 'Jost', 'Outfit'];
+  var FONT_STACKS = {
+    'Cormorant Garamond': "'Cormorant Garamond', serif", 'Playfair Display': "'Playfair Display', serif",
+    'Abril Fatface': "'Abril Fatface', serif", 'Cinzel': "'Cinzel', serif",
+    'Fraunces': "'Fraunces', serif", 'Bodoni Moda': "'Bodoni Moda', serif",
+    'Raleway': "'Raleway', sans-serif", 'Inter': "'Inter', sans-serif",
+    'Work Sans': "'Work Sans', sans-serif", 'Jost': "'Jost', sans-serif", 'Outfit': "'Outfit', sans-serif"
+  };
+
+  function populateFontSelect(id, options) {
+    document.getElementById(id).innerHTML = options.map(function(f) {
+      return '<option value="' + escapeAttr(f) + '" style="font-family:' + FONT_STACKS[f] + ';">' + escapeHtml(f) + '</option>';
+    }).join('');
+  }
+  populateFontSelect('c-font-display', DISPLAY_FONTS);
+  populateFontSelect('c-font-body', BODY_FONTS);
 
   // ─── HELPERS ────────────────────────────────────────────────────────────────
   function fmtTime(ms) {
@@ -382,9 +402,11 @@
   // it) carries the venue's name, so the card always reflects its real colors.
   function previewHtml(v, withFooter) {
     var c = Object.assign({}, DEFAULT_COLORS, v.colors || {});
+    var f = Object.assign({}, DEFAULT_FONTS, v.fonts || {});
+    var displayStack = FONT_STACKS[f.display] || FONT_STACKS[DEFAULT_FONTS.display];
     var html = '<div class="venue-card-preview" style="background:' + c.bg + ';">' +
         '<div class="venue-card-box" style="background:' + c.box + ';">' +
-          '<div class="venue-card-name" style="color:' + c.text + ';">' + escapeHtml(v.name) + '</div>' +
+          '<div class="venue-card-name" style="color:' + c.text + ';font-family:' + displayStack + ';">' + escapeHtml(v.name) + '</div>' +
         '</div>' +
       '</div>';
     if (withFooter) {
@@ -404,7 +426,7 @@
     db.collection('venues').where('ownerUid', '==', currentUser.uid).get().then(function(snap) {
       venues = snap.docs.map(function(d) {
         var data = d.data();
-        return { name: data.name, slug: d.id, colors: data.colors || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], sessionActive: data.sessionActive === true };
+        return { name: data.name, slug: d.id, colors: data.colors || {}, fonts: data.fonts || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], sessionActive: data.sessionActive === true };
       });
       renderVenueGrid();
       if (afterLoad) afterLoad();
@@ -640,6 +662,9 @@
       document.getElementById('c-'+k+'-h').value = colors[k];
     });
     renderLinkRows(v.links);
+    var fonts = Object.assign({}, DEFAULT_FONTS, v.fonts || {});
+    document.getElementById('c-font-display').value = fonts.display;
+    document.getElementById('c-font-body').value = fonts.body;
   }
 
   document.getElementById('save-config-btn').addEventListener('click', function() {
@@ -653,9 +678,13 @@
 
     var colors = {};
     Object.keys(DEFAULT_COLORS).forEach(function(k) { colors[k] = document.getElementById('c-'+k+'-h').value; });
+    var fonts = {
+      display: document.getElementById('c-font-display').value,
+      body: document.getElementById('c-font-body').value
+    };
 
-    db.collection('venues').doc(workspaceSlug).update({ colors: colors, links: result.links }).then(function() {
-      v.colors = colors; v.links = result.links;
+    db.collection('venues').doc(workspaceSlug).update({ colors: colors, fonts: fonts, links: result.links }).then(function() {
+      v.colors = colors; v.fonts = fonts; v.links = result.links;
       showSaved('config-saved');
       renderOverview(v);
       renderVenueGrid();
