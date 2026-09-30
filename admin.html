@@ -13,9 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400&family=Raleway:wght@300;400;500;600&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -155,8 +153,11 @@
 
 <div class="header">
   <div class="header-title">Tonight</div>
-  <div class="venue-badge" id="venue-badge">No venue selected</div>
+  <a class="venue-badge" href="dashboard.html" style="text-decoration:none;">Manage Venues</a>
 </div>
+<select id="venue-switcher" style="width:100%;margin-bottom:1.25rem;padding:0.6rem;font-family:'Raleway',sans-serif;font-size:0.72rem;letter-spacing:0.05em;background:var(--surface2);border:1px solid var(--border);color:var(--text);">
+  <option value="">Select a venue…</option>
+</select>
 
 <div class="map-container" id="map-container">
   <div class="map-placeholder"><div class="map-placeholder-text">Select a venue to load floor plan</div></div>
@@ -182,44 +183,6 @@
   <div class="session-status" id="session-status-label"></div>
 </div>
 
-<div class="collapse-toggle" id="stats-toggle">
-  <div class="collapse-label">Stats</div>
-  <div class="collapse-arrow" id="stats-arrow">▼</div>
-</div>
-<div class="collapse-panel" id="stats-panel">
-  <div class="stats-tabs">
-    <div class="stats-tab active" id="tab-tonight">Tonight</div>
-    <div class="stats-tab" id="tab-month">By Month</div>
-    <div class="stats-tab" id="tab-alltime">All Time</div>
-  </div>
-  <div class="month-row" id="month-row"><select id="month-select"></select></div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value" id="stat-performances">0</div><div class="stat-label">Tables performed</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-conversion">—</div><div class="stat-label">Scan to request rate</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-cancellations">0</div><div class="stat-label">Cancellations</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-avg-wait">—</div><div class="stat-label">Avg wait time</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-total-scans">0</div><div class="stat-label">Total scans</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-peak">—</div><div class="stat-label">Peak request hour</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-avg-visit">—</div><div class="stat-label">Avg table visit</div></div>
-  </div>
-  <div id="link-clicks-section" style="display:none;padding:0 1rem 1rem;">
-    <div style="font-size:0.6rem;font-weight:500;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Link Clicks</div>
-    <div id="link-clicks-list"></div>
-  </div>
-  <div id="table-breakdown" style="display:none;padding:0 1rem 1rem;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-      <div>
-        <div style="font-size:0.6rem;font-weight:500;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Most Active</div>
-        <div id="top-tables"></div>
-      </div>
-      <div>
-        <div style="font-size:0.6rem;font-weight:500;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Least Active</div>
-        <div id="bottom-tables"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="collapse-toggle" id="settings-toggle">
   <div class="collapse-label">Settings</div>
   <div class="collapse-arrow" id="settings-arrow">▼</div>
@@ -242,84 +205,6 @@
     <div class="setting-label">Notifications</div>
     <button class="venue-btn" id="enable-push-btn">Enable Notifications</button>
     <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;" id="push-status"></div>
-  </div>
-  <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
-    <div class="setting-label">Performer name</div>
-    <input type="text" class="short-input" id="performer-name" style="width:100%;" maxlength="60" placeholder="Shown to guests instead of a logo">
-  </div>
-  <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
-    <div class="setting-label">Logo <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
-    <div id="performer-logo-preview" style="display:none;margin-bottom:0.25rem;"><img id="performer-logo-img" style="height:48px;width:auto;display:block;" alt="Logo"></div>
-    <div style="display:flex;gap:0.5rem;width:100%;">
-      <label class="file-label" id="performer-logo-label" style="flex:1;">
-        <span id="performer-logo-text">+ Upload logo</span>
-        <input type="file" id="performer-logo-input" accept="image/*" style="display:none;">
-      </label>
-      <button type="button" class="venue-btn danger" id="performer-logo-remove-btn" style="display:none;">Remove</button>
-    </div>
-  </div>
-  <button class="action-btn" id="save-performer-btn">Save Performer Info</button>
-  <div class="saved-msg" id="performer-saved">Saved</div>
-  <div class="error-msg" id="performer-error" style="display:none;"></div>
-</div>
-
-<div class="modal-overlay" id="venue-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Venues</div>
-      <button class="modal-close" id="modal-close-btn">×</button>
-    </div>
-    <div class="venue-list" id="venue-list"></div>
-    <div style="padding:1rem;border-top:1px solid var(--border);">
-      <button class="primary-btn" id="show-add-venue-btn" style="width:100%;">+ Add New Venue</button>
-    </div>
-    <div class="add-venue-form" id="add-venue-form" style="display:none;">
-      <div class="form-label">Add new venue</div>
-      <input type="text" class="text-field" id="new-venue-name" placeholder="Venue name (e.g. Lady Slipper)">
-      <label class="file-label" id="map-upload-label">
-        <span id="map-upload-text">+ Add floor plan photo (optional)</span>
-        <input type="file" id="map-upload-input" accept="image/*" style="display:none;">
-      </label>
-      <div class="form-label" style="margin-top:0.25rem;">Table numbers</div>
-      <textarea class="text-field" id="new-venue-tables" placeholder="e.g. 1,2,3,4,5,10,20,21,22" rows="2" style="resize:none;overflow:hidden;line-height:1.6;font-size:0.78rem;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-      <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;margin-top:-0.25rem;">Comma-separated. Used for QR code generation.</div>
-      <div style="font-size:0.58rem;color:var(--muted);letter-spacing:0.08em;">You can add more floor plan photos after creating the venue.</div>
-      <button class="primary-btn" id="add-venue-btn">Add Venue</button>
-    </div>
-    <div class="customize-form" id="customize-form" style="display:none;">
-      <div class="customize-title" id="customize-title">Customize</div>
-      <div class="color-row"><div class="setting-label">Background</div><div class="color-inputs"><input type="color" id="c-bg-p" value="#26060f"><input type="text" class="hex-input" id="c-bg-h" value="#26060f" maxlength="7"></div></div>
-      <div class="color-row"><div class="setting-label">Box color</div><div class="color-inputs"><input type="color" id="c-box-p" value="#273534"><input type="text" class="hex-input" id="c-box-h" value="#273534" maxlength="7"></div></div>
-      <div class="color-row"><div class="setting-label">Accent color</div><div class="color-inputs"><input type="color" id="c-accent-p" value="#6f0f43"><input type="text" class="hex-input" id="c-accent-h" value="#6f0f43" maxlength="7"></div></div>
-      <div class="color-row"><div class="setting-label">Highlight color</div><div class="color-inputs"><input type="color" id="c-highlight-p" value="#927b52"><input type="text" class="hex-input" id="c-highlight-h" value="#927b52" maxlength="7"></div></div>
-      <div class="color-row"><div class="setting-label">Text color</div><div class="color-inputs"><input type="color" id="c-text-p" value="#eae9d6"><input type="text" class="hex-input" id="c-text-h" value="#eae9d6" maxlength="7"></div></div>
-      <div class="color-row"><div class="setting-label">Muted text</div><div class="color-inputs"><input type="color" id="c-muted-p" value="#9aab9a"><input type="text" class="hex-input" id="c-muted-h" value="#9aab9a" maxlength="7"></div></div>
-      <div class="color-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
-        <div class="setting-label">Links <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(up to 6, shown on the screens you choose)</span></div>
-        <div id="link-list" style="width:100%;"></div>
-        <button type="button" class="venue-btn" id="add-link-btn">+ Add link</button>
-      </div>
-      <div class="color-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem;border-bottom:none;">
-        <div class="setting-label">Table numbers</div>
-        <textarea class="short-input" id="c-tables" placeholder="1,2,3,4,5,10,20,21" rows="2" style="width:100%;resize:none;overflow:hidden;line-height:1.6;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-        <div style="font-size:0.58rem;color:var(--muted);letter-spacing:0.08em;">Comma-separated list for QR code generation</div>
-      </div>
-      <div class="error-msg" id="config-error" style="display:none;"></div>
-      <button class="primary-btn" style="margin-top:0.75rem;" id="save-config-btn">Save Appearance</button>
-      <div class="saved-msg" id="config-saved">Appearance saved</div>
-    </div>
-    <div class="customize-form" id="floorplan-form" style="display:none;">
-      <div class="customize-title" id="floorplan-title">Floor Plan</div>
-      <div style="padding:1rem 1rem 0;font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;">Up to 8 photos. Guests never see these.</div>
-      <div id="floorplan-list" style="padding:1rem;"></div>
-      <div style="padding:0 1rem 1rem;">
-        <label class="file-label" id="floorplan-upload-label" style="width:100%;">
-          <span id="floorplan-upload-text">+ Add floor plan photo</span>
-          <input type="file" id="floorplan-upload-input" accept="image/*" style="display:none;">
-        </label>
-      </div>
-      <div class="error-msg" id="floorplan-error" style="display:none;"></div>
-    </div>
   </div>
 </div>
 
@@ -442,16 +327,11 @@
   var venues = [];
   var entries = [];
   var unsubscribe = null;
-  var currentTab = 'tonight';
-  var customizeSlug = null;
-  var newMapFile = null;
   var currentUser = null;
-  var storage = firebase.storage();
-  var floorplanSlug = null;
   var activeMapIndex = 0;
+  var TIMER_MINS = 5;
 
   // ─── HELPERS ────────────────────────────────────────────────────────────────
-  function slug(name) { return name.toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
   function fmtTime(ms) {
     var m = Math.floor(ms / 60000);
@@ -505,129 +385,10 @@
     showSaved('settings-saved');
   });
 
-  // ─── STATS ──────────────────────────────────────────────────────────────────
-  document.getElementById('stats-toggle').addEventListener('click', function() {
-    document.getElementById('stats-panel').classList.toggle('open');
-    document.getElementById('stats-arrow').classList.toggle('open');
-    if (document.getElementById('stats-panel').classList.contains('open')) loadStats();
-  });
-
   document.getElementById('settings-toggle').addEventListener('click', function() {
     document.getElementById('settings-panel').classList.toggle('open');
     document.getElementById('settings-arrow').classList.toggle('open');
   });
-
-  document.getElementById('tab-tonight').addEventListener('click', function() { switchTab('tonight'); });
-  document.getElementById('tab-month').addEventListener('click', function() { switchTab('month'); });
-  document.getElementById('tab-alltime').addEventListener('click', function() { switchTab('alltime'); });
-  document.getElementById('month-select').addEventListener('change', function() { loadStats(); });
-
-  function switchTab(tab) {
-    currentTab = tab;
-    document.querySelectorAll('.stats-tab').forEach(function(t) { t.classList.remove('active'); });
-    document.getElementById('tab-' + tab).classList.add('active');
-    document.getElementById('month-row').className = 'month-row' + (tab === 'month' ? ' visible' : '');
-    loadStats();
-  }
-
-  function loadStats() {
-    if (!settings.activeVenue) return;
-    db.collection('venueEvents').doc(settings.activeVenue).collection('events').get()
-      .then(function(snap) {
-        // Every date/month/hour bucket is computed here, from the event's real
-        // server timestamp — no event stores its own date/month/hour anymore.
-        var all = snap.docs.map(function(d) {
-          var data = d.data();
-          var ts = (data.timestamp && data.timestamp.toDate) ? data.timestamp.toDate() : null;
-          data._date = ts ? ts.toISOString().split('T')[0] : null;
-          data._month = ts ? ts.toISOString().slice(0, 7) : null;
-          data._hour = ts ? ts.getHours() : null;
-          data._ms = ts ? ts.getTime() : null;
-          return data;
-        });
-        var today = new Date().toISOString().split('T')[0];
-        var months = [];
-        all.forEach(function(e) { if (e._month && months.indexOf(e._month) < 0) months.push(e._month); });
-        months.sort().reverse();
-
-        var sel = document.getElementById('month-select');
-        if (months.length) {
-          var cur = sel.value;
-          sel.innerHTML = months.map(function(m) {
-            var d = new Date(parseInt(m.split('-')[0]), parseInt(m.split('-')[1]) - 1);
-            var lbl = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-            return '<option value="' + m + '"' + (m === cur ? ' selected' : '') + '>' + lbl + '</option>';
-          }).join('');
-        }
-
-        var events = all;
-        if (currentTab === 'tonight') events = all.filter(function(e) { return e._date === today; });
-        else if (currentTab === 'month') { var m = sel.value || months[0]; events = all.filter(function(e) { return e._month === m; }); }
-
-        var scans = events.filter(function(e) { return e.type === 'scan'; }).length;
-        var reqs  = events.filter(function(e) { return e.type === 'request'; }).length;
-        var perfs = events.filter(function(e) { return e.type === 'performance'; }).length;
-        var cxls  = events.filter(function(e) { return e.type === 'cancellation'; }).length;
-        var waits = events.filter(function(e) { return e.type === 'performance' && e.waitMs; }).map(function(e) { return e.waitMs; });
-
-        document.getElementById('stat-performances').textContent = perfs;
-        document.getElementById('stat-total-scans').textContent = scans;
-        document.getElementById('stat-cancellations').textContent = cxls;
-        document.getElementById('stat-conversion').textContent = scans > 0 ? Math.round(reqs / scans * 100) + '%' : '—';
-
-        if (waits.length) {
-          var avg = waits.reduce(function(a, b) { return a + b; }, 0) / waits.length;
-          document.getElementById('stat-avg-wait').textContent = fmtTime(avg);
-        } else document.getElementById('stat-avg-wait').textContent = '—';
-
-        var reqHours = events.filter(function(e) { return e.type === 'request' && e._hour != null; });
-        if (reqHours.length) {
-          var hc = {};
-          reqHours.forEach(function(e) { hc[e._hour] = (hc[e._hour] || 0) + 1; });
-          var ph = parseInt(Object.keys(hc).sort(function(a,b){return hc[b]-hc[a];})[0]);
-          document.getElementById('stat-peak').textContent = ph === 0 ? '12am' : ph < 12 ? ph + 'am' : ph === 12 ? '12pm' : (ph-12) + 'pm';
-        } else document.getElementById('stat-peak').textContent = '—';
-
-        // Avg table visit: average gap between "On my way" taps, counted only
-        // between a Begin Performing and its matching Finish Performing, so a
-        // gap can never span an overnight or forgotten-open session.
-        var timeline = events.filter(function(e) {
-          return (e.type === 'session_start' || e.type === 'session_end' || e.type === 'performance') && e._ms != null;
-        }).sort(function(a, b) { return a._ms - b._ms; });
-
-        var gaps = [];
-        var sessionOpen = false;
-        var lastPerf = null;
-        timeline.forEach(function(e) {
-          if (e.type === 'session_start') { sessionOpen = true; lastPerf = null; }
-          else if (e.type === 'session_end') { sessionOpen = false; lastPerf = null; }
-          else if (e.type === 'performance' && sessionOpen) {
-            if (lastPerf != null) gaps.push(e._ms - lastPerf);
-            lastPerf = e._ms;
-          }
-        });
-        if (gaps.length) {
-          var avgVisit = gaps.reduce(function(a, b) { return a + b; }, 0) / gaps.length;
-          document.getElementById('stat-avg-visit').textContent = fmtTime(avgVisit);
-        } else document.getElementById('stat-avg-visit').textContent = '—';
-
-        // Link clicks, by label
-        var clicks = events.filter(function(e) { return e.type === 'link_click' && e.label; });
-        var clickCounts = {};
-        clicks.forEach(function(e) { clickCounts[e.label] = (clickCounts[e.label] || 0) + 1; });
-        var labels = Object.keys(clickCounts).sort(function(a, b) { return clickCounts[b] - clickCounts[a]; });
-        var clickSection = document.getElementById('link-clicks-section');
-        if (labels.length) {
-          document.getElementById('link-clicks-list').innerHTML = labels.map(function(l) {
-            return '<div class="link-click-row"><span>' + escapeHtml(l) + '</span><span class="count">' + clickCounts[l] + '</span></div>';
-          }).join('');
-          clickSection.style.display = 'block';
-        } else {
-          clickSection.style.display = 'none';
-        }
-
-      }).catch(function() {});
-  }
 
   function logEvent(type, table, requestedAt) {
     if (!settings.activeVenue) return;
@@ -665,452 +426,29 @@
   }
 
   // ─── VENUES ─────────────────────────────────────────────────────────────────
-  document.getElementById('venue-badge').addEventListener('click', openVenueModal);
-  document.getElementById('modal-close-btn').addEventListener('click', closeVenueModal);
-  document.getElementById('add-venue-btn').addEventListener('click', addVenue);
-  document.getElementById('save-config-btn').addEventListener('click', saveConfig);
-  document.getElementById('map-upload-label').addEventListener('click', function() {
-    document.getElementById('map-upload-input').click();
-  });
-  document.getElementById('map-upload-input').addEventListener('change', function() {
-    var file = this.files[0]; if (!file) return;
-    newMapFile = file;
-    document.getElementById('map-upload-label').classList.add('ready');
-    document.getElementById('map-upload-text').textContent = '✓ Photo ready';
-  });
-
   document.getElementById('map-container').addEventListener('click', function(e) {
     var nav = e.target.closest('.map-nav');
     if (nav) { e.stopPropagation(); stepMap(parseInt(nav.dataset.dir)); return; }
     var dot = e.target.closest('.dot');
     if (dot) { e.stopPropagation(); activeMapIndex = parseInt(dot.dataset.index); renderMapViewer(); return; }
-    if (settings.activeVenue) { openVenueModal(); openFloorPlanPanel(settings.activeVenue); }
-    else openVenueModal();
+    if (!settings.activeVenue) window.location.href = 'dashboard.html';
   });
 
-  // Color picker sync
-  ['bg','box','accent','highlight','text','muted'].forEach(function(k) {
-    var p = document.getElementById('c-'+k+'-p'), h = document.getElementById('c-'+k+'-h');
-    p.addEventListener('input', function() { h.value = p.value; });
-    h.addEventListener('input', function() { if (/^#[0-9a-fA-F]{6}$/.test(h.value)) p.value = h.value; });
+  document.getElementById('venue-switcher').addEventListener('change', function() {
+    if (this.value) selectVenue(this.value);
   });
-
-  function openVenueModal() {
-    renderVenueList();
-    document.getElementById('show-add-venue-btn').style.display = 'block';
-    document.getElementById('add-venue-form').style.display = 'none';
-    document.getElementById('customize-form').style.display = 'none';
-    document.getElementById('floorplan-form').style.display = 'none';
-    document.getElementById('venue-modal').classList.add('open');
-  }
-
-  document.getElementById('show-add-venue-btn').addEventListener('click', function() {
-    document.getElementById('show-add-venue-btn').style.display = 'none';
-    document.getElementById('add-venue-form').style.display = 'flex';
-  });
-
-  function closeVenueModal() {
-    document.getElementById('venue-modal').classList.remove('open');
-    document.getElementById('new-venue-name').value = '';
-    newMapFile = null;
-    document.getElementById('map-upload-label').classList.remove('ready');
-    document.getElementById('map-upload-text').textContent = '+ Add floor plan photo (optional)';
-    document.getElementById('show-add-venue-btn').style.display = 'block';
-    document.getElementById('add-venue-form').style.display = 'none';
-    document.getElementById('customize-form').style.display = 'none';
-    document.getElementById('floorplan-form').style.display = 'none';
-  }
-
-  function generateVenueId() {
-    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    var id = '';
-    for (var i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
-    return id;
-  }
-
-  function cleanTableList(raw) {
-    var seen = {};
-    return raw
-      ? raw.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; })
-             .filter(function(t) { return seen[t] ? false : (seen[t] = true); })
-      : [];
-  }
-
-  function addVenue() {
-    var name = document.getElementById('new-venue-name').value.trim();
-    if (!name) return;
-    var tableNums = cleanTableList(document.getElementById('new-venue-tables').value.trim());
-    var fileToUpload = newMapFile || null;
-
-    function finish(id, v) {
-      venues.push(v);
-      renderVenueList();
-      document.getElementById('new-venue-name').value = '';
-      document.getElementById('new-venue-tables').value = '';
-      newMapFile = null;
-      document.getElementById('map-upload-label').classList.remove('ready');
-      document.getElementById('map-upload-text').textContent = '+ Add floor plan photo (optional)';
-      document.getElementById('add-venue-form').style.display = 'none';
-      document.getElementById('show-add-venue-btn').style.display = 'block';
-    }
-
-    function tryCreate(attemptsLeft) {
-      var id = generateVenueId();
-      db.collection('venues').doc(id).set({
-        ownerUid: currentUser.uid,
-        name: name,
-        tables: tableNums,
-        colors: {},
-        links: [],
-        mapUrls: [],
-        sessionActive: false,
-        timerMins: TIMER_MINS,
-        createdAt: FS.serverTimestamp()
-      }).then(function() {
-        var v = { name: name, slug: id, mapUrls: [], colors: {}, links: [], tables: tableNums, sessionActive: false };
-        if (!fileToUpload) { finish(id, v); return; }
-        uploadFloorplanPhoto(id, fileToUpload).then(function(url) {
-          v.mapUrls = [url];
-          db.collection('venues').doc(id).update({ mapUrls: v.mapUrls }).catch(function() {});
-          finish(id, v);
-        }).catch(function() {
-          // Venue was created; the photo just didn't upload. It can be added from the Map button.
-          finish(id, v);
-        });
-      }).catch(function() {
-        if (attemptsLeft > 0) { tryCreate(attemptsLeft - 1); return; }
-        alert('Could not create the venue. Check your connection and try again.');
-      });
-    }
-    tryCreate(4);
-  }
 
   function selectVenue(s) {
     settings.activeVenue = s;
     localStorage.setItem('activeVenue', s);
+    document.getElementById('venue-switcher').value = s;
     var v = venues.find(function(v) { return v.slug === s; });
     if (v) {
-      document.getElementById('venue-badge').textContent = v.name;
       activeMapIndex = 0;
       renderMapViewer();
       updateSessionUI();
     }
-    closeVenueModal();
     subscribeToVenue();
-    loadStats();
-  }
-
-  var MAX_LINKS = 6;
-  var TIMER_MINS = 5;
-
-  function escapeAttr(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-  }
-
-  function escapeHtml(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  function linkRowHtml(link) {
-    link = link || { label: '', url: '', screens: [] };
-    var screens = link.screens || [];
-    function checked(v) { return screens.indexOf(v) > -1 ? 'checked' : ''; }
-    return '<div class="link-row">' +
-      '<input type="text" class="short-input link-label" style="width:100%;" maxlength="40" placeholder="Label (e.g. Instagram)" value="' + escapeAttr(link.label) + '">' +
-      '<input type="text" class="short-input link-url" style="width:100%;" placeholder="https://..." value="' + escapeAttr(link.url) + '">' +
-      '<div class="link-screens">' +
-        '<label><input type="checkbox" class="link-screen" value="landing" ' + checked('landing') + '>Landing</label>' +
-        '<label><input type="checkbox" class="link-screen" value="queue" ' + checked('queue') + '>Queue</label>' +
-        '<label><input type="checkbox" class="link-screen" value="after" ' + checked('after') + '>After</label>' +
-      '</div>' +
-      '<button type="button" class="venue-btn danger remove-link-btn" style="align-self:flex-end;">Remove</button>' +
-    '</div>';
-  }
-
-  function renderLinkRows(links) {
-    var list = document.getElementById('link-list');
-    list.innerHTML = (links && links.length ? links : []).map(linkRowHtml).join('');
-    updateAddLinkBtn();
-  }
-
-  function updateAddLinkBtn() {
-    var count = document.querySelectorAll('#link-list .link-row').length;
-    var btn = document.getElementById('add-link-btn');
-    btn.disabled = count >= MAX_LINKS;
-    btn.style.opacity = count >= MAX_LINKS ? '0.4' : '1';
-  }
-
-  document.getElementById('add-link-btn').addEventListener('click', function() {
-    if (document.querySelectorAll('#link-list .link-row').length >= MAX_LINKS) return;
-    document.getElementById('link-list').insertAdjacentHTML('beforeend', linkRowHtml());
-    updateAddLinkBtn();
-  });
-
-  document.getElementById('link-list').addEventListener('click', function(e) {
-    var btn = e.target.closest('.remove-link-btn');
-    if (!btn) return;
-    btn.closest('.link-row').remove();
-    updateAddLinkBtn();
-  });
-
-  function readLinksFromForm() {
-    var rows = document.querySelectorAll('#link-list .link-row');
-    var links = [];
-    for (var i = 0; i < rows.length; i++) {
-      var label = rows[i].querySelector('.link-label').value.trim();
-      var url = rows[i].querySelector('.link-url').value.trim();
-      var screens = Array.prototype.slice.call(rows[i].querySelectorAll('.link-screen:checked')).map(function(c) { return c.value; });
-      if (!label && !url) continue; // blank row, skip silently
-      if (!label) return { error: 'Link ' + (i + 1) + ' needs a label.' };
-      if (!/^https:\/\//.test(url)) return { error: '"' + label + '" needs a URL starting with https://' };
-      if (!screens.length) return { error: '"' + label + '" needs at least one screen checked.' };
-      links.push({ label: label, url: url, screens: screens });
-    }
-    return { links: links };
-  }
-
-  function openCustomize(s) {
-    customizeSlug = s;
-    var v = venues.find(function(v) { return v.slug === s; });
-    document.getElementById('customize-title').textContent = 'Customize — ' + (v ? v.name : s);
-    document.getElementById('show-add-venue-btn').style.display = 'none';
-    document.getElementById('add-venue-form').style.display = 'none';
-    document.getElementById('customize-form').style.display = 'block';
-    document.getElementById('floorplan-form').style.display = 'none';
-    document.getElementById('config-error').style.display = 'none';
-    var defs = { bg:'#26060f', box:'#273534', accent:'#6f0f43', highlight:'#927b52', text:'#eae9d6', muted:'#9aab9a' };
-    var colors = (v && v.colors) || {};
-    Object.keys(defs).forEach(function(k) {
-      var val = colors[k] || defs[k];
-      document.getElementById('c-'+k+'-p').value = val;
-      document.getElementById('c-'+k+'-h').value = val;
-    });
-    renderLinkRows(v && v.links);
-    var tablesEl = document.getElementById('c-tables');
-    tablesEl.value = (v && v.tables) ? v.tables.join(', ') : '';
-    setTimeout(function() { tablesEl.style.height = 'auto'; tablesEl.style.height = tablesEl.scrollHeight + 'px'; }, 0);
-    document.getElementById('customize-form').scrollIntoView({ behavior: 'smooth' });
-  }
-
-  function saveConfig() {
-    if (!customizeSlug) return;
-    var v = venues.find(function(v) { return v.slug === customizeSlug; });
-    if (!v) return;
-    var errorEl = document.getElementById('config-error');
-    errorEl.style.display = 'none';
-
-    var result = readLinksFromForm();
-    if (result.error) {
-      errorEl.textContent = result.error;
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    var colors = {
-      bg:        document.getElementById('c-bg-h').value,
-      box:       document.getElementById('c-box-h').value,
-      accent:    document.getElementById('c-accent-h').value,
-      highlight: document.getElementById('c-highlight-h').value,
-      text:      document.getElementById('c-text-h').value,
-      muted:     document.getElementById('c-muted-h').value
-    };
-    var tables = cleanTableList(document.getElementById('c-tables').value.trim());
-
-    db.collection('venues').doc(customizeSlug).update({
-      colors: colors, links: result.links, tables: tables
-    }).then(function() {
-      v.colors = colors; v.links = result.links; v.tables = tables;
-      showSaved('config-saved');
-    }).catch(function() {
-      errorEl.textContent = 'Could not save. Check your connection and try again.';
-      errorEl.style.display = 'block';
-    });
-  }
-
-  function renameVenue(s) {
-    var v = venues.find(function(v) { return v.slug === s; });
-    if (!v) return;
-    var n = prompt('Rename venue (QR code links stay the same):', v.name);
-    if (!n || !n.trim()) return;
-    db.collection('venues').doc(s).update({ name: n.trim() }).then(function() {
-      v.name = n.trim();
-      if (settings.activeVenue === s) document.getElementById('venue-badge').textContent = v.name;
-      renderVenueList();
-    }).catch(function() {
-      alert('Could not rename the venue. Check your connection and try again.');
-    });
-  }
-
-  var MAX_PHOTOS = 8;
-
-  function generateFileId() {
-    return Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-  }
-
-  function uploadFloorplanPhoto(venueId, file) {
-    var path = 'venue-maps/' + venueId + '/' + generateFileId();
-    var ref = storage.ref(path);
-    return ref.put(file, { customMetadata: { ownerUid: currentUser.uid } })
-      .then(function(snap) { return snap.ref.getDownloadURL(); });
-  }
-
-  function deleteFloorplanPhoto(url) {
-    try {
-      return storage.refFromURL(url).delete().catch(function() {});
-    } catch (e) {
-      return Promise.resolve();
-    }
-  }
-
-  function openFloorPlanPanel(s) {
-    floorplanSlug = s;
-    var v = venues.find(function(v) { return v.slug === s; });
-    document.getElementById('floorplan-title').textContent = 'Floor Plan — ' + (v ? v.name : s);
-    document.getElementById('show-add-venue-btn').style.display = 'none';
-    document.getElementById('add-venue-form').style.display = 'none';
-    document.getElementById('customize-form').style.display = 'none';
-    document.getElementById('floorplan-form').style.display = 'block';
-    document.getElementById('floorplan-error').style.display = 'none';
-    renderFloorplanRows();
-    document.getElementById('floorplan-form').scrollIntoView({ behavior: 'smooth' });
-  }
-
-  function renderFloorplanRows() {
-    var v = venues.find(function(v) { return v.slug === floorplanSlug; });
-    var urls = (v && v.mapUrls) || [];
-    var list = document.getElementById('floorplan-list');
-    list.innerHTML = urls.map(function(url, i) {
-      return '<div class="floorplan-row" data-index="' + i + '">' +
-        '<img src="' + url + '" alt="Floor plan photo ' + (i + 1) + '">' +
-        '<div class="fp-label">Photo ' + (i + 1) + '</div>' +
-        '<button type="button" class="venue-btn move-up-btn"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-        '<button type="button" class="venue-btn move-down-btn"' + (i === urls.length - 1 ? ' disabled' : '') + '>↓</button>' +
-        '<button type="button" class="venue-btn danger remove-photo-btn">Remove</button>' +
-      '</div>';
-    }).join('');
-    var addLabel = document.getElementById('floorplan-upload-label');
-    var atMax = urls.length >= MAX_PHOTOS;
-    addLabel.style.opacity = atMax ? '0.4' : '1';
-    addLabel.style.pointerEvents = atMax ? 'none' : 'auto';
-  }
-
-  function saveFloorplanUrls(urls) {
-    var v = venues.find(function(v) { return v.slug === floorplanSlug; });
-    if (!v) return;
-    v.mapUrls = urls;
-    db.collection('venues').doc(floorplanSlug).update({ mapUrls: urls }).then(function() {
-      renderFloorplanRows();
-      if (settings.activeVenue === floorplanSlug) { activeMapIndex = 0; renderMapViewer(); }
-    }).catch(function() {
-      var errorEl = document.getElementById('floorplan-error');
-      errorEl.textContent = 'Could not save. Check your connection and try again.';
-      errorEl.style.display = 'block';
-    });
-  }
-
-  document.getElementById('floorplan-upload-label').addEventListener('click', function() {
-    document.getElementById('floorplan-upload-input').click();
-  });
-  document.getElementById('floorplan-upload-input').addEventListener('change', function() {
-    var file = this.files[0];
-    this.value = '';
-    if (!file || !floorplanSlug) return;
-    var v = venues.find(function(v) { return v.slug === floorplanSlug; });
-    if (!v) return;
-    var urls = (v.mapUrls || []).slice();
-    if (urls.length >= MAX_PHOTOS) return;
-    var errorEl = document.getElementById('floorplan-error');
-    errorEl.style.display = 'none';
-    uploadFloorplanPhoto(floorplanSlug, file).then(function(url) {
-      urls.push(url);
-      saveFloorplanUrls(urls);
-    }).catch(function() {
-      errorEl.textContent = 'Could not upload that photo. Check your connection and try again.';
-      errorEl.style.display = 'block';
-    });
-  });
-
-  document.getElementById('floorplan-list').addEventListener('click', function(e) {
-    var row = e.target.closest('.floorplan-row');
-    if (!row) return;
-    var v = venues.find(function(v) { return v.slug === floorplanSlug; });
-    if (!v) return;
-    var urls = (v.mapUrls || []).slice();
-    var i = parseInt(row.dataset.index);
-
-    if (e.target.closest('.move-up-btn') && i > 0) {
-      var tmp = urls[i - 1]; urls[i - 1] = urls[i]; urls[i] = tmp;
-      saveFloorplanUrls(urls);
-    } else if (e.target.closest('.move-down-btn') && i < urls.length - 1) {
-      var tmp2 = urls[i + 1]; urls[i + 1] = urls[i]; urls[i] = tmp2;
-      saveFloorplanUrls(urls);
-    } else if (e.target.closest('.remove-photo-btn')) {
-      var removedUrl = urls[i];
-      urls.splice(i, 1);
-      saveFloorplanUrls(urls);
-      deleteFloorplanPhoto(removedUrl);
-    }
-  });
-
-  function deleteVenue(s) {
-    if (!confirm('Delete this venue? Its QR codes will stop working.')) return;
-    var venueRef = db.collection('venues').doc(s);
-    venueRef.collection('tables').get().then(function(snap) {
-      var batch = db.batch();
-      snap.docs.forEach(function(d) { batch.delete(d.ref); });
-      return batch.commit();
-    }).then(function() {
-      return venueRef.delete();
-    }).then(function() {
-      storage.ref('venue-maps/' + s).listAll()
-        .then(function(res) { return Promise.all(res.items.map(function(item) { return item.delete(); })); })
-        .catch(function() {});
-      venues = venues.filter(function(v) { return v.slug !== s; });
-      if (settings.activeVenue === s) {
-        settings.activeVenue = null;
-        localStorage.removeItem('activeVenue');
-        document.getElementById('venue-badge').textContent = 'No venue selected';
-        setMapPlaceholder('Select a venue to load floor plan');
-        if (unsubscribe) unsubscribe();
-      }
-      renderVenueList();
-    }).catch(function() {
-      alert('Could not delete the venue. Check your connection and try again.');
-    });
-  }
-
-  function downloadVenueQR(s) {
-    var v = venues.find(function(v) { return v.slug === s; });
-    var url = entryUrlFor(s);
-    var scratch = document.createElement('div');
-    scratch.style.position = 'absolute';
-    scratch.style.left = '-9999px';
-    document.body.appendChild(scratch);
-
-    new QRCode(scratch, {
-      text: url,
-      width: 800,
-      height: 800,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H
-    });
-
-    setTimeout(function() {
-      var canvas = scratch.querySelector('canvas');
-      var img = scratch.querySelector('img');
-      var dataUrl = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
-      document.body.removeChild(scratch);
-      if (!dataUrl) { alert('Could not generate the QR code. Try again.'); return; }
-
-      var nameSlug = (v ? v.name : s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      var a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = 'tablside-' + nameSlug + '-qr.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }, 200);
   }
 
   function renderMapViewer() {
@@ -1142,14 +480,6 @@
       '<div class="map-placeholder"><div class="map-placeholder-text">' + text + '</div></div>';
   }
 
-  function saveVenues() {
-    var batch = db.batch();
-    venues.forEach(function(v) {
-      batch.set(db.collection('venuePresets').doc(v.slug), { name: v.name, slug: v.slug, config: v.config || {}, tables: v.tables || [] });
-    });
-    batch.commit().catch(function() {});
-    venues.forEach(function(v) { if (v.map) localStorage.setItem('map_' + v.slug, v.map); });
-  }
 
   function loadVenues() {
     db.collection('venues').where('ownerUid', '==', currentUser.uid).get().then(function(snap) {
@@ -1157,11 +487,14 @@
         var data = d.data();
         return { name: data.name, slug: d.id, colors: data.colors || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], sessionActive: data.sessionActive === true };
       });
-      renderVenueList();
+      var sw = document.getElementById('venue-switcher');
+      sw.innerHTML = '<option value="">Select a venue…</option>' + venues.map(function(v) {
+        return '<option value="' + v.slug + '">' + v.name + '</option>';
+      }).join('');
       if (settings.activeVenue) {
         var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
         if (v) {
-          document.getElementById('venue-badge').textContent = v.name;
+          sw.value = v.slug;
           activeMapIndex = 0;
           renderMapViewer();
           updateSessionUI();
@@ -1169,7 +502,6 @@
           // Saved venue belongs to another account or no longer exists
           settings.activeVenue = null;
           localStorage.removeItem('activeVenue');
-          document.getElementById('venue-badge').textContent = 'No venue selected';
           setMapPlaceholder('Select a venue to load floor plan');
           updateSessionUI();
         }
@@ -1179,64 +511,6 @@
     }).catch(function() {});
   }
 
-  function entryUrlFor(slug) {
-    return window.location.origin + window.location.pathname.replace(/admin\.html$/, '') + 'enter.html?venue=' + slug;
-  }
-
-  function copyEntryLink(s, btn) {
-    var url = entryUrlFor(s);
-    var original = btn.textContent;
-    function done() {
-      btn.textContent = 'Copied!';
-      setTimeout(function() { btn.textContent = original; }, 1500);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(done).catch(function() { prompt('Copy this link:', url); });
-    } else {
-      prompt('Copy this link:', url);
-    }
-  }
-
-  function renderVenueList() {
-    var list = document.getElementById('venue-list');
-    if (!venues.length) {
-      list.innerHTML = '<div style="padding:1rem;font-size:0.72rem;color:var(--muted);text-align:center;">No venues yet.</div>';
-      return;
-    }
-    list.innerHTML = venues.map(function(v) {
-      var isActive = settings.activeVenue === v.slug;
-      return '<div class="venue-item' + (isActive ? ' active' : '') + '">' +
-        '<div style="flex:1;">' +
-          '<div class="venue-item-name">' + v.name + '</div>' +
-          '<div class="venue-item-id">ID: ' + v.slug + '</div>' +
-          (isActive ? '<div class="venue-item-active-label">Active</div>' : '') +
-        '</div>' +
-        '<div class="venue-actions">' +
-          '<button class="venue-btn primary" data-action="select" data-slug="' + v.slug + '">Select</button>' +
-          '<button class="venue-btn" data-action="copy-link" data-slug="' + v.slug + '">Copy Link</button>' +
-          '<button class="venue-btn" data-action="customize" data-slug="' + v.slug + '">Customize</button>' +
-          '<button class="venue-btn" data-action="rename" data-slug="' + v.slug + '">Rename</button>' +
-          '<button class="venue-btn" data-action="map" data-slug="' + v.slug + '">Map</button>' +
-          '<button class="venue-btn" data-action="qr" data-slug="' + v.slug + '">Download QR</button>' +
-          '<button class="venue-btn danger" data-action="delete" data-slug="' + v.slug + '">Delete</button>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-
-    list.onclick = function(e) {
-      var btn = e.target.closest('[data-action]'); if (!btn) return;
-      var a = btn.dataset.action, s = btn.dataset.slug;
-      if (a === 'select')    selectVenue(s);
-      else if (a === 'copy-link') copyEntryLink(s, btn);
-      else if (a === 'customize') openCustomize(s);
-      else if (a === 'rename')    renameVenue(s);
-      else if (a === 'map')       openFloorPlanPanel(s);
-      else if (a === 'qr')        downloadVenueQR(s);
-      else if (a === 'delete')    deleteVenue(s);
-    };
-  }
-
-  // ─── QUEUE ──────────────────────────────────────────────────────────────────
   function subscribeToVenue() {
     if (!settings.activeVenue) return;
     if (unsubscribe) unsubscribe();
@@ -1463,80 +737,6 @@
   var performerLogoFile = null;
   var performerRemoveLogo = false;
 
-  function loadPerformerProfile() {
-    db.collection('performers').doc(currentUser.uid).get().then(function(snap) {
-      var data = snap.exists ? snap.data() : {};
-      document.getElementById('performer-name').value = data.name || '';
-      if (data.logoUrl) {
-        document.getElementById('performer-logo-img').src = data.logoUrl;
-        document.getElementById('performer-logo-preview').style.display = 'block';
-        document.getElementById('performer-logo-remove-btn').style.display = 'inline-block';
-      }
-    }).catch(function() {});
-  }
-
-  document.getElementById('performer-logo-label').addEventListener('click', function() {
-    document.getElementById('performer-logo-input').click();
-  });
-  document.getElementById('performer-logo-input').addEventListener('change', function() {
-    var file = this.files[0]; if (!file) return;
-    performerLogoFile = file;
-    performerRemoveLogo = false;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      document.getElementById('performer-logo-img').src = ev.target.result;
-      document.getElementById('performer-logo-preview').style.display = 'block';
-      document.getElementById('performer-logo-remove-btn').style.display = 'inline-block';
-    };
-    reader.readAsDataURL(file);
-  });
-  document.getElementById('performer-logo-remove-btn').addEventListener('click', function() {
-    performerLogoFile = null;
-    performerRemoveLogo = true;
-    document.getElementById('performer-logo-preview').style.display = 'none';
-    document.getElementById('performer-logo-remove-btn').style.display = 'none';
-    document.getElementById('performer-logo-input').value = '';
-  });
-
-  document.getElementById('save-performer-btn').addEventListener('click', function() {
-    var name = document.getElementById('performer-name').value.trim();
-    var errorEl = document.getElementById('performer-error');
-    errorEl.style.display = 'none';
-
-    function writeProfile(logoUrl) {
-      var data = { name: name };
-      if (logoUrl !== undefined) data.logoUrl = logoUrl;
-      db.collection('performers').doc(currentUser.uid).set(data, { merge: true })
-        .then(function() { performerLogoFile = null; performerRemoveLogo = false; showSaved('performer-saved'); })
-        .catch(function() {
-          errorEl.textContent = 'Could not save. Check your connection and try again.';
-          errorEl.style.display = 'block';
-        });
-    }
-
-    if (performerLogoFile) {
-      var ref = storage.ref('performer-logos/' + currentUser.uid + '/logo');
-      ref.put(performerLogoFile).then(function(snap) { return snap.ref.getDownloadURL(); })
-        .then(function(url) { writeProfile(url); })
-        .catch(function() {
-          errorEl.textContent = 'Could not upload the logo. Check your connection and try again.';
-          errorEl.style.display = 'block';
-        });
-    } else if (performerRemoveLogo) {
-      storage.ref('performer-logos/' + currentUser.uid + '/logo').delete().catch(function() {});
-      writeProfile('');
-    } else {
-      writeProfile(undefined);
-    }
-  });
-
-  // ─── INIT ───────────────────────────────────────────────────────────────────
-  if (settings.activeVenue) {
-    subscribeToVenue();
-    loadStats();
-  }
-  // ─── SIGN-IN GATE ───────────────────────────────────────────────────────────
-  // Page stays hidden until we know someone is signed in.
   document.getElementById('signout-btn').addEventListener('click', function() {
     firebase.auth().signOut();
   });
@@ -1546,7 +746,6 @@
     document.getElementById('account-email').textContent = user.email;
     document.body.classList.remove('pending');
     loadVenues();
-    loadPerformerProfile();
     updatePushStatus();
     maybeShowPushPrompt();
   });
