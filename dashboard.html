@@ -44,18 +44,15 @@
   .add-venue-link .plus { font-size:1.1rem; line-height:1; }
 
   .venue-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:1.5rem; }
-  .venue-card { position:relative; aspect-ratio:4/3; border:1px solid var(--border); cursor:pointer; overflow:hidden; }
-  .venue-card-inner { height:100%; width:100%; display:flex; flex-direction:column; justify-content:space-between; padding:1.25rem; }
-  .venue-card-name { font-family:'Cormorant Garamond',serif; font-size:1.25rem; line-height:1.25; }
-  .venue-card-box { border:1px solid rgba(255,255,255,0.12); padding:0.6rem 0.75rem; }
-  .venue-card-sub { font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; opacity:0.75; }
-  .venue-card-pill { display:inline-block; padding:0.5rem 0.9rem; font-size:0.6rem; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; border:1px solid; width:fit-content; }
-  .venue-card-footer { display:flex; align-items:center; justify-content:space-between; }
-  .venue-card-id { font-size:0.58rem; letter-spacing:0.05em; opacity:0.6; }
-  .venue-card-actions { display:flex; gap:0.5rem; opacity:0; transition:opacity 0.15s; }
-  .venue-card:hover .venue-card-actions { opacity:1; }
-  .venue-card-actions button { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:inherit; font-family:'Raleway',sans-serif; font-size:0.56rem; letter-spacing:0.06em; text-transform:uppercase; padding:3px 7px; cursor:pointer; }
-  .venue-card-actions button:hover { background:rgba(255,255,255,0.28); }
+  .venue-card { border:1px solid var(--border); cursor:pointer; }
+  .venue-card-preview { aspect-ratio:4/3; padding:9%; display:flex; }
+  .venue-card-box { flex:1; display:flex; align-items:center; justify-content:center; padding:1rem; text-align:center; }
+  .venue-card-name { font-family:'Cormorant Garamond',serif; font-size:1.4rem; line-height:1.3; }
+  .venue-card-footer { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.85rem; background:var(--surface); border-top:1px solid var(--border); }
+  .venue-card-id { font-size:0.6rem; color:var(--muted); letter-spacing:0.05em; }
+  .venue-card-actions { display:flex; gap:0.4rem; }
+  .venue-card-actions button { background:none; border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.56rem; letter-spacing:0.06em; text-transform:uppercase; padding:4px 8px; cursor:pointer; }
+  .venue-card-actions button:hover { border-color:var(--teal); color:var(--teal); }
   .empty-state { padding:3rem 1rem; text-align:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.1rem; color:var(--muted); border:1px solid var(--border); }
 
   /* WORKSPACE */
@@ -201,11 +198,6 @@
           <div id="link-list" style="margin-bottom:0.6rem;"></div>
           <button type="button" class="venue-btn" id="add-link-btn">+ Add link</button>
         </div>
-        <div class="panel-block">
-          <div class="form-label">Table numbers</div>
-          <textarea class="short-input" id="c-tables" placeholder="1,2,3,4,5,10,20,21" rows="2" style="resize:none;overflow:hidden;line-height:1.6;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-          <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;margin-top:0.4rem;">Comma-separated list for QR code generation</div>
-        </div>
         <div class="error-msg" id="config-error" style="display:none;max-width:560px;"></div>
         <button class="btn btn-solid" id="save-config-btn">Save Appearance</button>
         <div class="saved-msg" id="config-saved" style="max-width:560px;text-align:left;">Appearance saved</div>
@@ -213,6 +205,14 @@
 
       <div class="tab-panel" id="panel-floorplan">
         <div class="panel-title">Floor Plan</div>
+        <div class="panel-block" style="max-width:560px;">
+          <div class="form-label">Table numbers</div>
+          <textarea class="short-input" id="c-tables" placeholder="1,2,3,4,5,10,20,21" rows="3" style="resize:vertical;line-height:1.7;min-height:4.5em;"></textarea>
+          <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;margin-top:0.5rem;">Comma-separated list for QR code generation</div>
+          <div class="error-msg" id="tables-error" style="display:none;text-align:left;padding:0.5rem 0 0;"></div>
+          <button class="btn btn-solid" id="save-tables-btn" style="margin-top:0.75rem;">Save Table Numbers</button>
+          <div class="saved-msg" id="tables-saved" style="text-align:left;">Table numbers saved</div>
+        </div>
         <div style="font-size:0.66rem;color:var(--muted);letter-spacing:0.06em;margin-bottom:1rem;">Up to 8 photos. Guests never see these.</div>
         <div id="floorplan-list" style="max-width:560px;"></div>
         <label class="file-label" id="floorplan-upload-label" style="max-width:560px;">
@@ -378,26 +378,25 @@
   }
 
   // ─── LIVE PREVIEW (used by both the home-page cards and the Overview tab) ──
-  function previewHtml(v) {
+  // Background fills the frame; an inset box (almost, but not quite, covering
+  // it) carries the venue's name, so the card always reflects its real colors.
+  function previewHtml(v, withFooter) {
     var c = Object.assign({}, DEFAULT_COLORS, v.colors || {});
-    return '<div class="venue-card-inner" style="background:' + c.bg + ';color:' + c.text + ';">' +
-      '<div>' +
-        '<div class="venue-card-name">' + escapeHtml(v.name) + '</div>' +
-        '<div class="venue-card-box" style="background:' + c.box + ';margin-top:0.6rem;">' +
-          '<div class="venue-card-sub">There is a magician in the room tonight</div>' +
+    var html = '<div class="venue-card-preview" style="background:' + c.bg + ';">' +
+        '<div class="venue-card-box" style="background:' + c.box + ';">' +
+          '<div class="venue-card-name" style="color:' + c.text + ';">' + escapeHtml(v.name) + '</div>' +
         '</div>' +
-      '</div>' +
-      '<div>' +
-        '<div class="venue-card-pill" style="background:' + c.accent + ';border-color:' + c.accent + ';color:' + c.text + ';margin-bottom:0.75rem;">Request a magician</div>' +
-        '<div class="venue-card-footer">' +
-          '<div class="venue-card-id" style="color:' + c.muted + ';">ID: ' + v.slug + '</div>' +
+      '</div>';
+    if (withFooter) {
+      html += '<div class="venue-card-footer">' +
+          '<div class="venue-card-id">ID: ' + v.slug + '</div>' +
           '<div class="venue-card-actions" data-slug="' + v.slug + '">' +
             '<button data-action="rename">Rename</button>' +
             '<button data-action="delete">Delete</button>' +
           '</div>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+        '</div>';
+    }
+    return html;
   }
 
   // ─── HOME: VENUE GRID ───────────────────────────────────────────────────────
@@ -419,7 +418,7 @@
       return;
     }
     grid.innerHTML = venues.map(function(v) {
-      return '<div class="venue-card" data-slug="' + v.slug + '">' + previewHtml(v) + '</div>';
+      return '<div class="venue-card" data-slug="' + v.slug + '">' + previewHtml(v, true) + '</div>';
     }).join('');
 
     grid.querySelectorAll('.venue-card').forEach(function(card) {
@@ -564,7 +563,7 @@
   // ─── OVERVIEW ───────────────────────────────────────────────────────────────
   function renderOverview(v) {
     document.getElementById('overview-preview').innerHTML =
-      '<div class="venue-card" style="cursor:default;">' + previewHtml(v) + '</div>';
+      '<div class="venue-card" style="cursor:default;">' + previewHtml(v, false) + '</div>';
     document.getElementById('overview-id').textContent = 'Venue ID: ' + v.slug;
     var thumbEl = document.getElementById('overview-floorplan-thumb');
     thumbEl.innerHTML = (v.mapUrls && v.mapUrls.length)
@@ -641,9 +640,6 @@
       document.getElementById('c-'+k+'-h').value = colors[k];
     });
     renderLinkRows(v.links);
-    var tablesEl = document.getElementById('c-tables');
-    tablesEl.value = (v.tables || []).join(', ');
-    setTimeout(function() { tablesEl.style.height = 'auto'; tablesEl.style.height = tablesEl.scrollHeight + 'px'; }, 0);
   }
 
   document.getElementById('save-config-btn').addEventListener('click', function() {
@@ -657,12 +653,12 @@
 
     var colors = {};
     Object.keys(DEFAULT_COLORS).forEach(function(k) { colors[k] = document.getElementById('c-'+k+'-h').value; });
-    var tables = cleanTableList(document.getElementById('c-tables').value.trim());
 
-    db.collection('venues').doc(workspaceSlug).update({ colors: colors, links: result.links, tables: tables }).then(function() {
-      v.colors = colors; v.links = result.links; v.tables = tables;
+    db.collection('venues').doc(workspaceSlug).update({ colors: colors, links: result.links }).then(function() {
+      v.colors = colors; v.links = result.links;
       showSaved('config-saved');
       renderOverview(v);
+      renderVenueGrid();
     }).catch(function() {
       errorEl.textContent = 'Could not save. Check your connection and try again.';
       errorEl.style.display = 'block';
@@ -679,9 +675,27 @@
     try { return storage.refFromURL(url).delete().catch(function() {}); }
     catch (e) { return Promise.resolve(); }
   }
+  document.getElementById('save-tables-btn').addEventListener('click', function() {
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    if (!v) return;
+    var errorEl = document.getElementById('tables-error');
+    errorEl.style.display = 'none';
+    var tables = cleanTableList(document.getElementById('c-tables').value.trim());
+    db.collection('venues').doc(workspaceSlug).update({ tables: tables }).then(function() {
+      v.tables = tables;
+      document.getElementById('c-tables').value = tables.join(', ');
+      showSaved('tables-saved');
+    }).catch(function() {
+      errorEl.textContent = 'Could not save. Check your connection and try again.';
+      errorEl.style.display = 'block';
+    });
+  });
+
   function renderFloorplanRows() {
     var v = venues.find(function(v) { return v.slug === workspaceSlug; });
     var urls = (v && v.mapUrls) || [];
+    document.getElementById('c-tables').value = (v && v.tables || []).join(', ');
+    document.getElementById('tables-error').style.display = 'none';
     document.getElementById('floorplan-list').innerHTML = urls.map(function(url, i) {
       return '<div class="floorplan-row" data-index="' + i + '">' +
         '<img src="' + url + '" alt="Floor plan photo ' + (i + 1) + '">' +
