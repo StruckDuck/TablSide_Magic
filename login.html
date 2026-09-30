@@ -129,7 +129,11 @@
   });
 
   auth.onAuthStateChanged(function(user) {
-    if (user) window.location.replace('admin.html');
+    if (user) {
+      var params = new URLSearchParams(window.location.search);
+      var next = params.get('next');
+      window.location.replace(/^(admin|dashboard)\.html$/.test(next) ? next : 'admin.html');
+    }
   });
 </script>
 </body>
