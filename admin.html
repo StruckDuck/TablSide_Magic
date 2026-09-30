@@ -14,6 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400&family=Raleway:wght@300;400;500;600&display=swap');
@@ -238,6 +239,11 @@
   <div class="saved-msg" id="settings-saved">Settings saved</div>
   <div class="setting-row"><div class="setting-label" id="account-email">Account</div><button class="venue-btn" id="signout-btn">Sign out</button></div>
   <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
+    <div class="setting-label">Notifications</div>
+    <button class="venue-btn" id="enable-push-btn">Enable Notifications</button>
+    <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;" id="push-status"></div>
+  </div>
+  <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
     <div class="setting-label">Performer name</div>
     <input type="text" class="short-input" id="performer-name" style="width:100%;" maxlength="60" placeholder="Shown to guests instead of a logo">
   </div>
@@ -330,9 +336,62 @@
   var db = firebase.firestore();
   db.settings({ experimentalAutoDetectLongPolling: true });
 
+  var swRegistrationPromise = null;
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(function() {});
+    swRegistrationPromise = navigator.serviceWorker.register('sw.js').catch(function() { return null; });
   }
+
+  // ─── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
+  var PUSH_VAPID_KEY = 'BKZ5QfQLA3ECH-vrnHuTcVH3Za-_MGbtmhDQaYFrZdisDJ7hY4ypvf3Gvz4XEclz3pA7my0G_lFsZlesqWGeTHM';
+  var messaging = null;
+  try {
+    if ('serviceWorker' in navigator && 'Notification' in window && firebase.messaging) {
+      messaging = firebase.messaging();
+    }
+  } catch (e) { messaging = null; }
+
+  function updatePushStatus() {
+    var el = document.getElementById('push-status');
+    var btn = document.getElementById('enable-push-btn');
+    if (!messaging) {
+      el.textContent = 'Not supported in this browser.';
+      btn.disabled = true;
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      el.textContent = 'Notifications are on for this device.';
+      btn.textContent = 'Notifications Enabled';
+      btn.disabled = true;
+    } else if (Notification.permission === 'denied') {
+      el.textContent = 'Blocked in your browser settings. Enable it there to turn this on.';
+      btn.disabled = true;
+    } else {
+      el.textContent = '';
+      btn.textContent = 'Enable Notifications';
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('enable-push-btn').addEventListener('click', function() {
+    if (!messaging || !currentUser) return;
+    var statusEl = document.getElementById('push-status');
+    Notification.requestPermission().then(function(perm) {
+      if (perm !== 'granted') { updatePushStatus(); return; }
+      Promise.resolve(swRegistrationPromise).then(function(reg) {
+        return messaging.getToken({ vapidKey: PUSH_VAPID_KEY, serviceWorkerRegistration: reg || undefined });
+      }).then(function(token) {
+        if (!token) { statusEl.textContent = 'Could not enable notifications. Try again.'; return; }
+        db.collection('pushTokens').doc(token).set({
+          ownerUid: currentUser.uid,
+          createdAt: FS.serverTimestamp()
+        }).then(updatePushStatus).catch(function() {
+          statusEl.textContent = 'Could not save. Check your connection and try again.';
+        });
+      }).catch(function() {
+        statusEl.textContent = 'Could not enable notifications. Try again.';
+      });
+    });
+  });
   var FS = firebase.firestore.FieldValue;
 
   // ─── STATE ──────────────────────────────────────────────────────────────────
@@ -1448,6 +1507,7 @@
     document.body.classList.remove('pending');
     loadVenues();
     loadPerformerProfile();
+    updatePushStatus();
   });
 </script>
 </body>
