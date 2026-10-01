@@ -342,9 +342,11 @@
               <option value="a4">A4</option>
             </select>
           </div>
-          <div class="color-row" id="sg-qty-row">
-            <div class="setting-label">Quantity</div>
-            <input type="number" class="hex-input" id="sg-qty" value="20" min="1" max="500" style="width:70px;">
+          <div class="color-row"><div class="setting-label">Table number</div>
+            <select id="sg-number-mode">
+              <option value="blank">Hand-written box</option>
+              <option value="typed">Typed on the card</option>
+            </select>
           </div>
           <div class="color-row"><div class="setting-label">Color</div>
             <select id="sg-color">
@@ -352,11 +354,9 @@
               <option value="brand">Match venue colors</option>
             </select>
           </div>
-          <div class="color-row"><div class="setting-label">Table number</div>
-            <select id="sg-number-mode">
-              <option value="blank">Hand-written box</option>
-              <option value="typed">Typed on the card</option>
-            </select>
+          <div class="color-row" id="sg-qty-row">
+            <div class="setting-label">Quantity</div>
+            <input type="number" class="hex-input" id="sg-qty" value="20" min="1" max="500" style="width:70px;">
           </div>
           <div class="color-row" style="border-bottom:none;"><div class="setting-label">Cut guide</div>
             <select id="sg-cutstyle">
