@@ -354,6 +354,79 @@
           <div id="ps-layout-info" style="font-size:0.68rem;color:var(--muted);margin-top:0.75rem;"></div>
           <button class="btn btn-solid" id="ps-generate-btn" style="margin-top:0.75rem;">Download Print Sheet (PDF)</button>
         </div>
+
+        <div class="panel-block" style="max-width:480px;margin-top:2rem;">
+          <div class="form-label" style="margin-bottom:0.75rem;">Table Signage</div>
+          <div style="font-size:0.7rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;">Individual cards for a stand, holder, or folded tent at each table. Color and number style apply to all three below.</div>
+
+          <div class="color-row"><div class="setting-label">Color</div>
+            <select id="sg-color">
+              <option value="bw">Black &amp; white</option>
+              <option value="brand">Match venue colors</option>
+            </select>
+          </div>
+          <div class="color-row" style="border-bottom:none;"><div class="setting-label">Table number</div>
+            <select id="sg-number-mode">
+              <option value="blank">Hand-written box</option>
+              <option value="typed">Typed on the card</option>
+            </select>
+          </div>
+          <div id="sg-contrast-warning" class="error-msg" style="display:none;text-align:left;padding-top:0.75rem;"></div>
+          <div id="sg-typed-warning" class="error-msg" style="display:none;text-align:left;padding-top:0.75rem;color:var(--gold);"></div>
+          <div id="sg-blank-note" style="font-size:0.66rem;color:var(--muted);line-height:1.6;padding-top:0.75rem;">Printing a few extra blank cards is cheap insurance, any one can cover a lost or ruined card by hand.</div>
+
+          <div style="border-top:1px solid var(--border);margin:1.1rem 0;"></div>
+
+          <div class="form-label">Flat Card</div>
+          <div class="color-row">
+            <div class="setting-label">Size</div>
+            <select id="flat-size">
+              <option value="50.8x63.5">2" × 2.5"</option>
+              <option value="63.5x76.2" selected>2.5" × 3"</option>
+              <option value="76.2x101.6">3" × 4"</option>
+            </select>
+          </div>
+          <div class="color-row" id="flat-qty-row" style="border-bottom:none;">
+            <div class="setting-label">Quantity</div>
+            <input type="number" class="hex-input" id="flat-qty" value="20" min="1" max="500" style="width:70px;">
+          </div>
+          <button class="btn btn-outline" id="flat-generate-btn" style="margin-top:0.5rem;width:100%;">Download Flat Card Sheet (PDF)</button>
+
+          <div style="border-top:1px solid var(--border);margin:1.1rem 0;"></div>
+
+          <div class="form-label">Block Stand</div>
+          <div class="color-row">
+            <div class="setting-label">Size</div>
+            <select id="block-size">
+              <option value="38.1x76.2">1.5" × 3"</option>
+              <option value="50.8x88.9" selected>2" × 3.5"</option>
+              <option value="63.5x101.6">2.5" × 4"</option>
+            </select>
+          </div>
+          <div class="color-row" id="block-qty-row" style="border-bottom:none;">
+            <div class="setting-label">Quantity</div>
+            <input type="number" class="hex-input" id="block-qty" value="20" min="1" max="500" style="width:70px;">
+          </div>
+          <button class="btn btn-outline" id="block-generate-btn" style="margin-top:0.5rem;width:100%;">Download Block Stand Sheet (PDF)</button>
+
+          <div style="border-top:1px solid var(--border);margin:1.1rem 0;"></div>
+
+          <div class="form-label">Tent Card <span style="text-transform:none;letter-spacing:0;">(wedge, interlocking tabs, QR on both sides)</span></div>
+          <div style="font-size:0.64rem;color:var(--gold);line-height:1.6;margin-bottom:0.5rem;">Print and fold one test copy before running a full batch — fold lines are dashed, cut lines are solid.</div>
+          <div class="color-row">
+            <div class="setting-label">Panel size</div>
+            <select id="tent-size">
+              <option value="50.8x63.5">2" × 2.5"</option>
+              <option value="63.5x76.2" selected>2.5" × 3"</option>
+              <option value="76.2x88.9">3" × 3.5"</option>
+            </select>
+          </div>
+          <div class="color-row" id="tent-qty-row" style="border-bottom:none;">
+            <div class="setting-label">Quantity</div>
+            <input type="number" class="hex-input" id="tent-qty" value="10" min="1" max="200" style="width:70px;">
+          </div>
+          <button class="btn btn-outline" id="tent-generate-btn" style="margin-top:0.5rem;width:100%;">Download Tent Card Sheet (PDF)</button>
+        </div>
       </div>
 
       <div class="tab-panel" id="panel-stats">
@@ -688,7 +761,7 @@
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
     document.getElementById('panel-' + tab).classList.add('active');
     if (tab === 'stats') loadStats();
-    if (tab === 'qr') { renderQrPreview(); updatePrintSheetInfo(); }
+    if (tab === 'qr') { renderQrPreview(); updatePrintSheetInfo(); updateSignageWarnings(); }
     if (tab === 'floorplan') renderFloorplanRows();
   }
 
@@ -1071,16 +1144,16 @@
     }, 200);
   }
 
-  function contrastRatio(hex1, hex2) {
+  function relativeLuminance(hex) {
     function channel(v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-    function lum(hex) {
-      var c = hex.replace('#', '');
-      var r = channel(parseInt(c.substr(0, 2), 16) / 255);
-      var g = channel(parseInt(c.substr(2, 2), 16) / 255);
-      var b = channel(parseInt(c.substr(4, 2), 16) / 255);
-      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    }
-    var L1 = lum(hex1), L2 = lum(hex2);
+    var c = hex.replace('#', '');
+    var r = channel(parseInt(c.substr(0, 2), 16) / 255);
+    var g = channel(parseInt(c.substr(2, 2), 16) / 255);
+    var b = channel(parseInt(c.substr(4, 2), 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function contrastRatio(hex1, hex2) {
+    var L1 = relativeLuminance(hex1), L2 = relativeLuminance(hex2);
     var lighter = Math.max(L1, L2), darker = Math.min(L1, L2);
     return (lighter + 0.05) / (darker + 0.05);
   }
@@ -1123,15 +1196,16 @@
     document.getElementById(id).addEventListener('change', updatePrintSheetInfo);
   });
 
-  function drawCropMarks(doc, x, y, size) {
+  function drawCropMarks(doc, x, y, w, h) {
+    if (h === undefined) h = w;
     var markLen = 3, gap = 1.5;
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.1);
     var corners = [
       { cx: x,        cy: y,        hDir: -1, vDir: -1 },
-      { cx: x + size, cy: y,        hDir:  1, vDir: -1 },
-      { cx: x,        cy: y + size, hDir: -1, vDir:  1 },
-      { cx: x + size, cy: y + size, hDir:  1, vDir:  1 }
+      { cx: x + w,    cy: y,        hDir:  1, vDir: -1 },
+      { cx: x,        cy: y + h,    hDir: -1, vDir:  1 },
+      { cx: x + w,    cy: y + h,    hDir:  1, vDir:  1 }
     ];
     corners.forEach(function(c) {
       doc.line(c.cx + c.hDir * gap, c.cy, c.cx + c.hDir * (gap + markLen), c.cy);
@@ -1180,6 +1254,222 @@
 
       var fname = 'tablside-' + nameLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-print-sheet.pdf';
       doc.save(fname);
+    });
+  });
+
+  // ─── TABLE SIGNAGE (flat cards, block stand inserts, tent cards) ───────────
+  function pickBestContrastColors(colors) {
+    var c = Object.assign({}, DEFAULT_COLORS, colors || {});
+    var keys = Object.keys(c);
+    var best = { dark: c.bg, light: c.text, ratio: 0 };
+    for (var i = 0; i < keys.length; i++) {
+      for (var j = i + 1; j < keys.length; j++) {
+        var ratio = contrastRatio(c[keys[i]], c[keys[j]]);
+        if (ratio > best.ratio) {
+          var iIsDarker = relativeLuminance(c[keys[i]]) < relativeLuminance(c[keys[j]]);
+          best = {
+            dark: iIsDarker ? c[keys[i]] : c[keys[j]],
+            light: iIsDarker ? c[keys[j]] : c[keys[i]],
+            ratio: ratio
+          };
+        }
+      }
+    }
+    return best;
+  }
+
+  function getSignageColors() {
+    if (document.getElementById('sg-color').value === 'bw') {
+      return { dark: '#000000', light: '#ffffff', ratio: 21 };
+    }
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    return pickBestContrastColors(v && v.colors);
+  }
+
+  function updateSignageWarnings() {
+    var colorMode = document.getElementById('sg-color').value;
+    var numberMode = document.getElementById('sg-number-mode').value;
+    var cWarn = document.getElementById('sg-contrast-warning');
+    if (colorMode === 'brand') {
+      var picked = getSignageColors();
+      if (picked.ratio < 4.5) {
+        cWarn.textContent = "Even this venue's best-contrasting color pair may not scan reliably once printed. Black and white is the safer choice for codes meant to actually be used.";
+        cWarn.style.display = 'block';
+      } else { cWarn.style.display = 'none'; }
+    } else { cWarn.style.display = 'none'; }
+
+    var typedWarn = document.getElementById('sg-typed-warning');
+    var blankNote = document.getElementById('sg-blank-note');
+    if (numberMode === 'typed') {
+      typedWarn.textContent = "Each typed card only works for its own table. If one is lost or ruined, there's no replacement until you print again — this batch automatically adds 3 blank spares at the end for exactly that.";
+      typedWarn.style.display = 'block';
+      blankNote.style.display = 'none';
+    } else {
+      typedWarn.style.display = 'none';
+      blankNote.style.display = 'block';
+    }
+
+    ['flat-qty-row', 'block-qty-row', 'tent-qty-row'].forEach(function(id) {
+      document.getElementById(id).style.display = numberMode === 'typed' ? 'none' : 'flex';
+    });
+  }
+  document.getElementById('sg-color').addEventListener('change', updateSignageWarnings);
+  document.getElementById('sg-number-mode').addEventListener('change', updateSignageWarnings);
+
+  function signageEntries(qtyInputId) {
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    if (document.getElementById('sg-number-mode').value === 'typed') {
+      var entries = ((v && v.tables) || []).slice();
+      for (var i = 0; i < 3; i++) entries.push(null);
+      return entries;
+    }
+    var qty = Math.max(1, parseInt(document.getElementById(qtyInputId).value) || 1);
+    var blanks = [];
+    for (var j = 0; j < qty; j++) blanks.push(null);
+    return blanks;
+  }
+
+  // Draws one QR-plus-number-box card into the given box. Shared by the flat
+  // card, block stand, and each panel of a tent card.
+  function drawCardContent(doc, x, y, w, h, qrDataUrl, numberText) {
+    var margin = w * 0.08;
+    var qrSize = Math.min(w - margin * 2, h * 0.62);
+    var qrX = x + (w - qrSize) / 2;
+    var qrY = y + margin;
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+    var boxW = w * 0.42, boxH = h * 0.1;
+    var boxX = x + (w - boxW) / 2;
+    var boxY = y + h - margin - boxH;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.25);
+    doc.rect(boxX, boxY, boxW, boxH);
+    if (numberText) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(boxH * 0.6 * 2.83465);
+      doc.setTextColor(0, 0, 0);
+      doc.text(String(numberText), boxX + boxW / 2, boxY + boxH / 2, { align: 'center', baseline: 'middle' });
+    }
+  }
+
+  function simpleCardLayout(cardW, cardH) {
+    var paper = PAPER_SIZES_MM.letter;
+    var outerMargin = 10, captionHeight = 10, gap = 8;
+    var cellW = cardW + gap, cellH = cardH + gap;
+    var usableW = paper.w - outerMargin * 2;
+    var usableH = paper.h - outerMargin * 2 - captionHeight;
+    var cols = Math.max(1, Math.floor((usableW + gap) / cellW));
+    var rows = Math.max(1, Math.floor((usableH + gap) / cellH));
+    return { paper: paper, cardW: cardW, cardH: cardH, outerMargin: outerMargin, cellW: cellW, cellH: cellH, cols: cols, rows: rows, perPage: cols * rows };
+  }
+
+  function generateSimpleCardSheet(sizeSelectId, qtyInputId, filenamePart) {
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    var dims = document.getElementById(sizeSelectId).value.split('x').map(parseFloat);
+    var layout = simpleCardLayout(dims[0], dims[1]);
+    var entries = signageEntries(qtyInputId);
+    var colors = getSignageColors();
+    var url = entryUrlFor(workspaceSlug);
+
+    generateQrDataUrl(url, colors.dark, colors.light, 500, function(qrDataUrl) {
+      if (!qrDataUrl) { alert('Could not generate the QR code. Try again.'); return; }
+      var jsPDFCtor = window.jspdf.jsPDF;
+      var doc = new jsPDFCtor({ unit: 'mm', format: [layout.paper.w, layout.paper.h] });
+      var nameLabel = v ? v.name : workspaceSlug;
+      var placed = 0, pageNum = 0;
+
+      while (placed < entries.length) {
+        if (pageNum > 0) doc.addPage([layout.paper.w, layout.paper.h]);
+        pageNum++;
+        for (var row = 0; row < layout.rows && placed < entries.length; row++) {
+          for (var col = 0; col < layout.cols && placed < entries.length; col++) {
+            var x = layout.outerMargin + col * layout.cellW;
+            var y = layout.outerMargin + row * layout.cellH;
+            drawCardContent(doc, x, y, layout.cardW, layout.cardH, qrDataUrl, entries[placed]);
+            drawCropMarks(doc, x, y, layout.cardW, layout.cardH);
+            placed++;
+          }
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+        doc.text(nameLabel + ' \u2014 ' + entries.length + ' cards \u2014 page ' + pageNum, layout.paper.w / 2, layout.paper.h - 6, { align: 'center' });
+      }
+      doc.save('tablside-' + nameLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + filenamePart + '.pdf');
+    });
+  }
+
+  document.getElementById('flat-generate-btn').addEventListener('click', function() {
+    generateSimpleCardSheet('flat-size', 'flat-qty', 'flat-cards');
+  });
+  document.getElementById('block-generate-btn').addEventListener('click', function() {
+    generateSimpleCardSheet('block-size', 'block-qty', 'block-stand-cards');
+  });
+
+  // ─── Tent card: wedge construction, two panels and two interlocking tabs ──
+  var TENT_TAB_H = 25.4; // 1 inch
+
+  function drawTentStrip(doc, x, y, panelW, panelH, qrDataUrl, numberText) {
+    var stripH = TENT_TAB_H * 2 + panelH * 2;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.15);
+    doc.rect(x, y, panelW, stripH);
+
+    doc.setLineDashPattern([1.5, 1], 0);
+    [y + TENT_TAB_H, y + TENT_TAB_H + panelH, y + TENT_TAB_H + panelH * 2].forEach(function(fy) {
+      doc.line(x, fy, x + panelW, fy);
+    });
+    doc.setLineDashPattern([], 0);
+
+    var slitW = panelW * 0.7, slitX = x + (panelW - slitW) / 2;
+    doc.line(slitX, y + TENT_TAB_H / 2, slitX + slitW, y + TENT_TAB_H / 2);
+    doc.line(slitX, y + TENT_TAB_H + panelH * 2 + TENT_TAB_H / 2, slitX + slitW, y + TENT_TAB_H + panelH * 2 + TENT_TAB_H / 2);
+
+    drawCardContent(doc, x, y + TENT_TAB_H, panelW, panelH, qrDataUrl, numberText);
+    drawCardContent(doc, x, y + TENT_TAB_H + panelH, panelW, panelH, qrDataUrl, numberText);
+    drawCropMarks(doc, x, y, panelW, stripH);
+  }
+
+  function tentSheetLayout(panelW, panelH) {
+    var paper = PAPER_SIZES_MM.letter;
+    var stripH = TENT_TAB_H * 2 + panelH * 2;
+    var outerMargin = 10, captionHeight = 10, gap = 10;
+    var cellW = panelW + gap, cellH = stripH + gap;
+    var usableW = paper.w - outerMargin * 2;
+    var usableH = paper.h - outerMargin * 2 - captionHeight;
+    var cols = Math.max(1, Math.floor((usableW + gap) / cellW));
+    var rows = Math.max(1, Math.floor((usableH + gap) / cellH));
+    return { paper: paper, panelW: panelW, panelH: panelH, stripH: stripH, outerMargin: outerMargin, cellW: cellW, cellH: cellH, cols: cols, rows: rows, perPage: cols * rows };
+  }
+
+  document.getElementById('tent-generate-btn').addEventListener('click', function() {
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    var dims = document.getElementById('tent-size').value.split('x').map(parseFloat);
+    var layout = tentSheetLayout(dims[0], dims[1]);
+    var entries = signageEntries('tent-qty');
+    var colors = getSignageColors();
+    var url = entryUrlFor(workspaceSlug);
+
+    generateQrDataUrl(url, colors.dark, colors.light, 500, function(qrDataUrl) {
+      if (!qrDataUrl) { alert('Could not generate the QR code. Try again.'); return; }
+      var jsPDFCtor = window.jspdf.jsPDF;
+      var doc = new jsPDFCtor({ unit: 'mm', format: [layout.paper.w, layout.paper.h] });
+      var nameLabel = v ? v.name : workspaceSlug;
+      var placed = 0, pageNum = 0;
+
+      while (placed < entries.length) {
+        if (pageNum > 0) doc.addPage([layout.paper.w, layout.paper.h]);
+        pageNum++;
+        for (var row = 0; row < layout.rows && placed < entries.length; row++) {
+          for (var col = 0; col < layout.cols && placed < entries.length; col++) {
+            var x = layout.outerMargin + col * layout.cellW;
+            var y = layout.outerMargin + row * layout.cellH;
+            drawTentStrip(doc, x, y, layout.panelW, layout.panelH, qrDataUrl, entries[placed]);
+            placed++;
+          }
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+        doc.text(nameLabel + ' \u2014 ' + entries.length + ' tent cards \u2014 fold on dashed lines \u2014 page ' + pageNum, layout.paper.w / 2, layout.paper.h - 6, { align: 'center' });
+      }
+      doc.save('tablside-' + nameLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-tent-cards.pdf');
     });
   });
 
