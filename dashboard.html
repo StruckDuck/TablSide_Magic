@@ -345,10 +345,16 @@
               <option value="brand">Match venue colors</option>
             </select>
           </div>
-          <div class="color-row" style="border-bottom:none;"><div class="setting-label">Table number</div>
+          <div class="color-row"><div class="setting-label">Table number</div>
             <select id="sg-number-mode">
               <option value="blank">Hand-written box</option>
               <option value="typed">Typed on the card</option>
+            </select>
+          </div>
+          <div class="color-row" style="border-bottom:none;"><div class="setting-label">Cut guide</div>
+            <select id="sg-cutstyle">
+              <option value="marks">Crop marks</option>
+              <option value="outline">Outline</option>
             </select>
           </div>
 
@@ -1182,10 +1188,25 @@
     return blanks;
   }
 
-  // Draws one QR-plus-number-box card. `flipped` rotates the whole layout
-  // 180°: QR anchored to the bottom, box to the top, number text rotated —
-  // used for a tent card's top panel so it reads right-side up once folded.
-  function drawCardContent(doc, x, y, w, h, qrDataUrl, numberText, flipped) {
+  function hexToRgb(hex) {
+    var c = hex.replace('#', '');
+    return [parseInt(c.substr(0, 2), 16), parseInt(c.substr(2, 2), 16), parseInt(c.substr(4, 2), 16)];
+  }
+
+  // Fills the full card (or one tent panel) with the chosen light color, not
+  // just the small square behind the QR pattern itself. Must be drawn before
+  // any fold lines, slots, or cut marks in that area, or it would paint over them.
+  function fillCardBackground(doc, x, y, w, h, colorLight) {
+    var rgb = hexToRgb(colorLight);
+    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    doc.rect(x, y, w, h, 'F');
+  }
+
+  // Draws the QR code and the number box on top of an already-filled
+  // background. `flipped` rotates the whole layout 180°: QR anchored to the
+  // bottom, box to the top, number text rotated — used for a tent card's top
+  // panel so it reads right-side up once folded.
+  function drawCardForeground(doc, x, y, w, h, qrDataUrl, numberText, flipped, colorDark) {
     var margin = w * 0.08;
     var qrSize = Math.min(w - margin * 2, h * 0.62);
     var qrX = x + (w - qrSize) / 2;
@@ -1195,16 +1216,30 @@
     var boxW = w * 0.42, boxH = h * 0.1;
     var boxX = x + (w - boxW) / 2;
     var boxY = flipped ? (y + margin) : (y + h - margin - boxH);
-    doc.setDrawColor(0, 0, 0);
+    var rgb = hexToRgb(colorDark);
+    doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
     doc.setLineWidth(0.25);
     doc.rect(boxX, boxY, boxW, boxH);
     if (numberText) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(boxH * 0.6 * 2.83465);
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(rgb[0], rgb[1], rgb[2]);
       var opts = { align: 'center', baseline: 'middle' };
       if (flipped) opts.angle = 180;
       doc.text(String(numberText), boxX + boxW / 2, boxY + boxH / 2, opts);
+    }
+  }
+
+  // The chosen cut guide for one card: either corner crop marks with no
+  // visible border, or a plain outline with no marks — never both.
+  function drawCutGuide(doc, x, y, w, h, cutStyle, colorDark) {
+    if (cutStyle === 'outline') {
+      var rgb = hexToRgb(colorDark);
+      doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+      doc.setLineWidth(0.3);
+      doc.rect(x, y, w, h);
+    } else {
+      drawCropMarks(doc, x, y, w, h);
     }
   }
 
@@ -1285,7 +1320,7 @@
     return 'tablside-' + nameLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + suffix + '.pdf';
   }
 
-  function generateFlatOrBlockSheet(v, layout, entries, qrDataUrl, suffix) {
+  function generateFlatOrBlockSheet(v, layout, entries, qrDataUrl, colorDark, colorLight, cutStyle, suffix) {
     var jsPDFCtor = window.jspdf.jsPDF;
     var doc = new jsPDFCtor({ unit: 'mm', format: [layout.paper.w, layout.paper.h] });
     var nameLabel = v ? v.name : workspaceSlug;
@@ -1298,8 +1333,9 @@
         for (var col = 0; col < layout.cols && placed < entries.length; col++) {
           var x = layout.outerMargin + col * layout.cellW;
           var y = layout.outerMargin + row * layout.cellH;
-          drawCardContent(doc, x, y, layout.cardW, layout.cardH, qrDataUrl, entries[placed], false);
-          drawCropMarks(doc, x, y, layout.cardW, layout.cardH);
+          fillCardBackground(doc, x, y, layout.cardW, layout.cardH, colorLight);
+          drawCutGuide(doc, x, y, layout.cardW, layout.cardH, cutStyle, colorDark);
+          drawCardForeground(doc, x, y, layout.cardW, layout.cardH, qrDataUrl, entries[placed], false, colorDark);
           placed++;
         }
       }
@@ -1311,28 +1347,38 @@
 
   // Top panel (nearer the strip's first tab) gets the rotated image and the
   // flipped layout; bottom panel (nearer the second tab) is drawn normally.
-  function drawTentStrip(doc, x, y, panelW, panelH, qrDataUrl, qrDataUrlRotated, numberText) {
+  // Backgrounds are filled first, then every construction line, then the QR
+  // and number box on top — reversing that order would paint over the lines.
+  function drawTentStrip(doc, x, y, panelW, panelH, qrDataUrl, qrDataUrlRotated, numberText, colorDark, colorLight, cutStyle) {
     var stripH = TENT_TAB_H * 2 + panelH * 2;
+
+    fillCardBackground(doc, x, y + TENT_TAB_H, panelW, panelH, colorLight);
+    fillCardBackground(doc, x, y + TENT_TAB_H + panelH, panelW, panelH, colorLight);
+
+    drawCutGuide(doc, x, y, panelW, stripH, cutStyle, colorDark);
+
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.15);
-    doc.rect(x, y, panelW, stripH);
-
     doc.setLineDashPattern([1.5, 1], 0);
     [y + TENT_TAB_H, y + TENT_TAB_H + panelH, y + TENT_TAB_H + panelH * 2].forEach(function(fy) {
       doc.line(x, fy, x + panelW, fy);
     });
     doc.setLineDashPattern([], 0);
 
-    var slitW = panelW * 0.7, slitX = x + (panelW - slitW) / 2;
-    doc.line(slitX, y + TENT_TAB_H / 2, slitX + slitW, y + TENT_TAB_H / 2);
-    doc.line(slitX, y + TENT_TAB_H + panelH * 2 + TENT_TAB_H / 2, slitX + slitW, y + TENT_TAB_H + panelH * 2 + TENT_TAB_H / 2);
+    // Interlocking slots: the top tab's slot runs from the left edge to
+    // center, the bottom tab's from the right edge to center, so the two
+    // tabs can slide into each other and lock once both are folded under.
+    var midX = x + panelW / 2;
+    var topTabMidY = y + TENT_TAB_H / 2;
+    var bottomTabMidY = y + TENT_TAB_H + panelH * 2 + TENT_TAB_H / 2;
+    doc.line(x, topTabMidY, midX, topTabMidY);
+    doc.line(x + panelW, bottomTabMidY, midX, bottomTabMidY);
 
-    drawCardContent(doc, x, y + TENT_TAB_H, panelW, panelH, qrDataUrlRotated, numberText, true);
-    drawCardContent(doc, x, y + TENT_TAB_H + panelH, panelW, panelH, qrDataUrl, numberText, false);
-    drawCropMarks(doc, x, y, panelW, stripH);
+    drawCardForeground(doc, x, y + TENT_TAB_H, panelW, panelH, qrDataUrlRotated, numberText, true, colorDark);
+    drawCardForeground(doc, x, y + TENT_TAB_H + panelH, panelW, panelH, qrDataUrl, numberText, false, colorDark);
   }
 
-  function generateTentSheet(v, layout, entries, qrDataUrl, qrDataUrlRotated) {
+  function generateTentSheet(v, layout, entries, qrDataUrl, qrDataUrlRotated, colorDark, colorLight, cutStyle) {
     var jsPDFCtor = window.jspdf.jsPDF;
     var doc = new jsPDFCtor({ unit: 'mm', format: [layout.paper.w, layout.paper.h] });
     var nameLabel = v ? v.name : workspaceSlug;
@@ -1345,7 +1391,7 @@
         for (var col = 0; col < layout.cols && placed < entries.length; col++) {
           var x = layout.outerMargin + col * layout.cellW;
           var y = layout.outerMargin + row * layout.cellH;
-          drawTentStrip(doc, x, y, layout.panelW, layout.panelH, qrDataUrl, qrDataUrlRotated, entries[placed]);
+          drawTentStrip(doc, x, y, layout.panelW, layout.panelH, qrDataUrl, qrDataUrlRotated, entries[placed], colorDark, colorLight, cutStyle);
           placed++;
         }
       }
@@ -1361,6 +1407,7 @@
     var layout = currentSignageLayout();
     var entries = signageEntries();
     var colors = getSignageColors();
+    var cutStyle = document.getElementById('sg-cutstyle').value;
     var url = entryUrlFor(workspaceSlug);
     var btn = document.getElementById('sg-generate-btn');
     var originalText = btn.textContent;
@@ -1372,11 +1419,11 @@
       if (type === 'tent') {
         rotateImage180(qrDataUrl, function(qrDataUrlRotated) {
           btn.disabled = false; btn.textContent = originalText;
-          generateTentSheet(v, layout, entries, qrDataUrl, qrDataUrlRotated);
+          generateTentSheet(v, layout, entries, qrDataUrl, qrDataUrlRotated, colors.dark, colors.light, cutStyle);
         });
       } else {
         btn.disabled = false; btn.textContent = originalText;
-        generateFlatOrBlockSheet(v, layout, entries, qrDataUrl, type === 'flat' ? 'flat-cards' : 'block-stand-cards');
+        generateFlatOrBlockSheet(v, layout, entries, qrDataUrl, colors.dark, colors.light, cutStyle, type === 'flat' ? 'flat-cards' : 'block-stand-cards');
       }
     });
   });
