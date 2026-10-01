@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500&family=Raleway:wght@300;400;500;600&family=Playfair+Display&family=Abril+Fatface&family=Cinzel&family=Fraunces&family=Bodoni+Moda&family=Inter&family=Work+Sans&family=Jost&family=Outfit&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -318,6 +319,40 @@
         <div style="display:flex;gap:0.75rem;">
           <button class="btn btn-outline" id="qr-copy-link-btn">Copy Link</button>
           <button class="btn btn-solid" id="qr-download-btn">Download QR</button>
+        </div>
+
+        <div class="panel-block" style="max-width:480px;margin-top:2rem;">
+          <div class="form-label" style="margin-bottom:0.75rem;">Print Shop Sheet</div>
+          <div style="font-size:0.7rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;">A ready-to-cut sheet with crop marks, sized to hand straight to a print shop.</div>
+
+          <div class="color-row"><div class="setting-label">Paper size</div>
+            <select id="ps-paper">
+              <option value="letter">Letter (8.5" × 11")</option>
+              <option value="tabloid">Tabloid (11" × 17")</option>
+              <option value="a4">A4</option>
+            </select>
+          </div>
+          <div class="color-row"><div class="setting-label">Code size</div>
+            <select id="ps-size">
+              <option value="25.4">1"</option>
+              <option value="38.1" selected>1.5"</option>
+              <option value="50.8">2"</option>
+              <option value="76.2">3"</option>
+            </select>
+          </div>
+          <div class="color-row"><div class="setting-label">Quantity</div>
+            <input type="number" class="hex-input" id="ps-qty" value="20" min="1" max="500" style="width:70px;">
+          </div>
+          <div class="color-row" style="border-bottom:none;"><div class="setting-label">Color</div>
+            <select id="ps-color">
+              <option value="bw">Black &amp; white</option>
+              <option value="brand">Match venue colors</option>
+            </select>
+          </div>
+
+          <div id="ps-contrast-warning" class="error-msg" style="display:none;text-align:left;padding-top:0.5rem;"></div>
+          <div id="ps-layout-info" style="font-size:0.68rem;color:var(--muted);margin-top:0.75rem;"></div>
+          <button class="btn btn-solid" id="ps-generate-btn" style="margin-top:0.75rem;">Download Print Sheet (PDF)</button>
         </div>
       </div>
 
@@ -653,7 +688,7 @@
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
     document.getElementById('panel-' + tab).classList.add('active');
     if (tab === 'stats') loadStats();
-    if (tab === 'qr') renderQrPreview();
+    if (tab === 'qr') { renderQrPreview(); updatePrintSheetInfo(); }
     if (tab === 'floorplan') renderFloorplanRows();
   }
 
@@ -1014,6 +1049,139 @@
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }, 200);
   }
+
+  // ─── PRINT SHOP SHEET ───────────────────────────────────────────────────────
+  var PAPER_SIZES_MM = {
+    letter:  { w: 215.9, h: 279.4 },
+    tabloid: { w: 279.4, h: 431.8 },
+    a4:      { w: 210,   h: 297 }
+  };
+
+  function generateQrDataUrl(url, colorDark, colorLight, size, callback) {
+    var scratch = document.createElement('div');
+    scratch.style.position = 'absolute'; scratch.style.left = '-9999px';
+    document.body.appendChild(scratch);
+    new QRCode(scratch, { text: url, width: size, height: size, colorDark: colorDark, colorLight: colorLight, correctLevel: QRCode.CorrectLevel.H });
+    setTimeout(function() {
+      var canvas = scratch.querySelector('canvas');
+      var img = scratch.querySelector('img');
+      var dataUrl = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
+      document.body.removeChild(scratch);
+      callback(dataUrl);
+    }, 200);
+  }
+
+  function contrastRatio(hex1, hex2) {
+    function channel(v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    function lum(hex) {
+      var c = hex.replace('#', '');
+      var r = channel(parseInt(c.substr(0, 2), 16) / 255);
+      var g = channel(parseInt(c.substr(2, 2), 16) / 255);
+      var b = channel(parseInt(c.substr(4, 2), 16) / 255);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+    var L1 = lum(hex1), L2 = lum(hex2);
+    var lighter = Math.max(L1, L2), darker = Math.min(L1, L2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function printSheetLayout() {
+    var paper = PAPER_SIZES_MM[document.getElementById('ps-paper').value];
+    var codeMM = parseFloat(document.getElementById('ps-size').value);
+    var outerMargin = 12, captionHeight = 10, cellGap = 10;
+    var cellSize = codeMM + cellGap;
+    var usableW = paper.w - outerMargin * 2;
+    var usableH = paper.h - outerMargin * 2 - captionHeight;
+    var cols = Math.max(1, Math.floor((usableW + cellGap) / cellSize));
+    var rows = Math.max(1, Math.floor((usableH + cellGap) / cellSize));
+    return { paper: paper, codeMM: codeMM, outerMargin: outerMargin, cellSize: cellSize, cols: cols, rows: rows, perPage: cols * rows };
+  }
+
+  function updateContrastWarning() {
+    var warnEl = document.getElementById('ps-contrast-warning');
+    if (document.getElementById('ps-color').value !== 'brand') { warnEl.style.display = 'none'; return; }
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    var accent = ((v && v.colors) || {}).accent || DEFAULT_COLORS.accent;
+    if (contrastRatio(accent, '#ffffff') < 4.5) {
+      warnEl.textContent = "This accent color may be too light to scan reliably once printed. Black and white is the safer choice for a code meant to actually be used.";
+      warnEl.style.display = 'block';
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+
+  function updatePrintSheetInfo() {
+    var layout = printSheetLayout();
+    var qty = Math.max(1, parseInt(document.getElementById('ps-qty').value) || 1);
+    var pages = Math.ceil(qty / layout.perPage);
+    document.getElementById('ps-layout-info').textContent =
+      layout.perPage + ' per sheet — ' + pages + ' page' + (pages === 1 ? '' : 's') + ' for ' + qty + ' codes.';
+    updateContrastWarning();
+  }
+  ['ps-paper', 'ps-size', 'ps-qty', 'ps-color'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', updatePrintSheetInfo);
+    document.getElementById(id).addEventListener('change', updatePrintSheetInfo);
+  });
+
+  function drawCropMarks(doc, x, y, size) {
+    var markLen = 3, gap = 1.5;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.1);
+    var corners = [
+      { cx: x,        cy: y,        hDir: -1, vDir: -1 },
+      { cx: x + size, cy: y,        hDir:  1, vDir: -1 },
+      { cx: x,        cy: y + size, hDir: -1, vDir:  1 },
+      { cx: x + size, cy: y + size, hDir:  1, vDir:  1 }
+    ];
+    corners.forEach(function(c) {
+      doc.line(c.cx + c.hDir * gap, c.cy, c.cx + c.hDir * (gap + markLen), c.cy);
+      doc.line(c.cx, c.cy + c.vDir * gap, c.cx, c.cy + c.vDir * (gap + markLen));
+    });
+  }
+
+  document.getElementById('ps-generate-btn').addEventListener('click', function() {
+    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    var layout = printSheetLayout();
+    var qty = Math.max(1, parseInt(document.getElementById('ps-qty').value) || 1);
+    var colorMode = document.getElementById('ps-color').value;
+    var colorDark = colorMode === 'brand' ? (((v && v.colors) || {}).accent || DEFAULT_COLORS.accent) : '#000000';
+    var url = entryUrlFor(workspaceSlug);
+    var btn = document.getElementById('ps-generate-btn');
+    var originalText = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Generating…';
+
+    generateQrDataUrl(url, colorDark, '#ffffff', 500, function(dataUrl) {
+      btn.disabled = false; btn.textContent = originalText;
+      if (!dataUrl) { alert('Could not generate the QR code. Try again.'); return; }
+
+      var jsPDFCtor = window.jspdf.jsPDF;
+      var doc = new jsPDFCtor({ unit: 'mm', format: [layout.paper.w, layout.paper.h] });
+      var nameLabel = v ? v.name : workspaceSlug;
+      var placed = 0, pageNum = 0;
+
+      while (placed < qty) {
+        if (pageNum > 0) doc.addPage([layout.paper.w, layout.paper.h]);
+        pageNum++;
+        for (var row = 0; row < layout.rows && placed < qty; row++) {
+          for (var col = 0; col < layout.cols && placed < qty; col++) {
+            var x = layout.outerMargin + col * layout.cellSize;
+            var y = layout.outerMargin + row * layout.cellSize;
+            doc.addImage(dataUrl, 'PNG', x, y, layout.codeMM, layout.codeMM);
+            drawCropMarks(doc, x, y, layout.codeMM);
+            placed++;
+          }
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        var caption = nameLabel + ' \u2014 ' + (layout.codeMM / 25.4).toFixed(2) + '" QR code \u2014 ' + qty + ' total \u2014 page ' + pageNum;
+        doc.text(caption, layout.paper.w / 2, layout.paper.h - 6, { align: 'center' });
+      }
+
+      var fname = 'tablside-' + nameLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-print-sheet.pdf';
+      doc.save(fname);
+    });
+  });
 
   // ─── STATS ──────────────────────────────────────────────────────────────────
   document.getElementById('tab-tonight').addEventListener('click', function() { switchStatsTab('tonight'); });
