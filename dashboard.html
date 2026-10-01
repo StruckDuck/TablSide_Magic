@@ -335,6 +335,13 @@
           <div class="color-row"><div class="setting-label" id="sg-size-label">Size</div>
             <select id="sg-size"></select>
           </div>
+          <div class="color-row"><div class="setting-label">Paper size</div>
+            <select id="sg-paper">
+              <option value="letter">Letter (8.5" × 11")</option>
+              <option value="tabloid">Tabloid (11" × 17")</option>
+              <option value="a4">A4</option>
+            </select>
+          </div>
           <div class="color-row" id="sg-qty-row">
             <div class="setting-label">Quantity</div>
             <input type="number" class="hex-input" id="sg-qty" value="20" min="1" max="500" style="width:70px;">
@@ -1243,8 +1250,7 @@
     }
   }
 
-  function simpleCardLayout(cardW, cardH) {
-    var paper = PAPER_SIZES_MM.letter;
+  function simpleCardLayout(cardW, cardH, paper) {
     var outerMargin = 10, captionHeight = 10, gap = 8;
     var cellW = cardW + gap, cellH = cardH + gap;
     var usableW = paper.w - outerMargin * 2;
@@ -1256,8 +1262,7 @@
 
   var TENT_TAB_H = 25.4; // 1 inch
 
-  function tentSheetLayout(panelW, panelH) {
-    var paper = PAPER_SIZES_MM.letter;
+  function tentSheetLayout(panelW, panelH, paper) {
     var stripH = TENT_TAB_H * 2 + panelH * 2;
     var outerMargin = 10, captionHeight = 10, gap = 10;
     var cellW = panelW + gap, cellH = stripH + gap;
@@ -1271,7 +1276,8 @@
   function currentSignageLayout() {
     var type = document.getElementById('sg-type').value;
     var dims = document.getElementById('sg-size').value.split('x').map(parseFloat);
-    return type === 'tent' ? tentSheetLayout(dims[0], dims[1]) : simpleCardLayout(dims[0], dims[1]);
+    var paper = PAPER_SIZES_MM[document.getElementById('sg-paper').value];
+    return type === 'tent' ? tentSheetLayout(dims[0], dims[1], paper) : simpleCardLayout(dims[0], dims[1], paper);
   }
 
   function updateSignageUI() {
@@ -1311,7 +1317,7 @@
   }
 
   document.getElementById('sg-type').addEventListener('change', function() { populateSignageSizeOptions(); updateSignageUI(); });
-  ['sg-size', 'sg-qty', 'sg-color', 'sg-number-mode'].forEach(function(id) {
+  ['sg-size', 'sg-paper', 'sg-qty', 'sg-color', 'sg-number-mode'].forEach(function(id) {
     document.getElementById(id).addEventListener('input', updateSignageUI);
     document.getElementById(id).addEventListener('change', updateSignageUI);
   });
