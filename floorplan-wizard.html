@@ -505,10 +505,11 @@
 
     state.numbers.forEach(function(n) {
       var isSelNum = selectedNumberIds.indexOf(n.id) > -1;
+      var isInvalid = tableNumbers.indexOf(n.value) === -1;
       var sz = NUMBER_SIZES[numberSize];
       var p = numberPos(n);
       ctx.beginPath(); ctx.arc(p.x, p.y, sz.r, 0, Math.PI * 2);
-      ctx.fillStyle = '#273534'; ctx.fill();
+      ctx.fillStyle = isInvalid ? '#a01a1a' : '#273534'; ctx.fill();
       ctx.lineWidth = isSelNum ? 3 : 1.5; ctx.strokeStyle = isSelNum ? '#7a6545' : '#fff'; ctx.stroke();
       ctx.font = '600 ' + sz.font + 'px Raleway, sans-serif'; ctx.fillStyle = '#fff';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -941,7 +942,12 @@
     pickerEl.style.left = Math.min(left, window.innerWidth - 230) + 'px';
     pickerEl.style.top = Math.min(top, window.innerHeight - 220) + 'px';
 
-    var html = '<div class="picker-title">' + (existingNumber ? 'Change table number' : 'Place a table number') + '</div><div class="picker-grid">';
+    var currentInvalid = existingNumber && tableNumbers.indexOf(existingNumber.value) === -1;
+    var html = '<div class="picker-title">' + (existingNumber ? 'Change table number' : 'Place a table number') + '</div>';
+    if (currentInvalid) {
+      html += '<div style="font-size:0.62rem;color:#a01a1a;background:#fbe9e9;border:1px solid #e2b8b8;padding:0.5rem;margin-bottom:0.5rem;line-height:1.5;">Currently "' + existingNumber.value + '" — no longer a valid table. Choose a real one below, or remove it.</div>';
+    }
+    html += '<div class="picker-grid">';
     tableNumbers.forEach(function(num) {
       var taken = takenValues.indexOf(num) > -1;
       var isCurrent = existingNumber && existingNumber.value === num;
@@ -998,8 +1004,13 @@
         state.shapes = (data.shapes || []).map(function(s) { if (s.kind === 'circle') s.kind = 'ellipse'; return s; });
         state.numbers = data.numbers || [];
         imageTransform = data.imageTransform || { x: 0, y: 0, scale: 1 };
-        tableNumbers = data.tableNumbers || tableNumbers;
-        document.getElementById('table-list-input').value = tableNumbers.join(',');
+        // Embedded in the dashboard, the venue's real table list is always
+        // the authoritative source — a loaded file never overwrites it with
+        // whatever list happened to be in use when it was saved.
+        if (!isEmbedded) {
+          tableNumbers = data.tableNumbers || tableNumbers;
+          document.getElementById('table-list-input').value = tableNumbers.join(',');
+        }
         numberSize = data.numberSize || 'medium';
         document.getElementById('number-size-select').value = numberSize;
         var maxId = 0;
