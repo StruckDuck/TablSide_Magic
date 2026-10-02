@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Floor Plan Wizard — prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500&family=Raleway:wght@300;400;500;600&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#f4f2ee; --surface:#fff; --surface2:#ede9e2; --border:#d6d0c6;
+    --text:#1a1612; --muted:#8a8278; --gold:#7a6545; --teal:#273534; --red:#a01a1a;
+  }
+  html, body { height:100%; }
+  body { font-family:'Raleway',sans-serif; background:var(--bg); color:var(--text); display:flex; flex-direction:column; }
+
+  .header { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 1.25rem; background:var(--surface); border-bottom:1px solid var(--border); }
+  .header-title { font-family:'Cormorant Garamond',serif; font-size:1.1rem; color:var(--teal); letter-spacing:0.1em; text-transform:uppercase; }
+  .header-note { font-size:0.65rem; color:var(--muted); letter-spacing:0.05em; }
+
+  .toolbar { display:flex; align-items:center; gap:0.4rem; padding:0.5rem 1rem; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .tool-btn { display:flex; align-items:center; gap:0.35rem; padding:0.4rem 0.65rem; background:var(--surface2); border:1px solid var(--border); cursor:pointer; font-family:'Raleway',sans-serif; font-size:0.68rem; color:var(--text); }
+  .tool-btn:hover { border-color:var(--teal); }
+  .tool-btn.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+  .tool-btn:disabled { opacity:0.35; cursor:not-allowed; }
+  .tool-sep { width:1px; align-self:stretch; background:var(--border); margin:0 0.3rem; }
+  .toggle-btn { display:flex; align-items:center; gap:0.4rem; padding:0.4rem 0.65rem; background:var(--surface2); border:1px solid var(--border); cursor:pointer; font-size:0.65rem; color:var(--muted); }
+  .toggle-btn.on { border-color:var(--gold); color:var(--teal); background:#f2ead9; }
+  .count-pill { font-size:0.65rem; color:var(--muted); padding:0.4rem 0.6rem; background:var(--surface2); border:1px solid var(--border); }
+  .spacer { flex:1; }
+  .zoom-row { display:flex; align-items:center; gap:0.5rem; }
+  .zoom-row input[type=range] { width:110px; }
+
+  .stage-wrap { flex:1; display:flex; align-items:center; justify-content:center; background:#e9e6df; background-image: radial-gradient(#d2cdc2 1px, transparent 1px); background-size:20px 20px; overflow:auto; padding:1rem; min-height:0; }
+  #canvas { background:#fff; border:1px solid var(--border); box-shadow:0 0 0 1px rgba(0,0,0,0.03); cursor:default; max-width:100%; height:auto; }
+  #canvas.tool-ellipse, #canvas.tool-rect { cursor:crosshair; }
+  #canvas.tool-move { cursor:move; }
+  #canvas.tool-number { cursor:pointer; }
+  #canvas.tool-crop { cursor:move; }
+
+  .start-screen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.25rem; padding:2rem; }
+  .start-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; color:var(--teal); }
+  .start-options { display:flex; gap:1rem; }
+  .start-card { width:220px; padding:1.5rem; background:var(--surface); border:1px solid var(--border); text-align:center; cursor:pointer; }
+  .start-card:hover { border-color:var(--teal); }
+  .start-card .icon { font-size:1.8rem; margin-bottom:0.6rem; }
+  .start-card .label { font-size:0.75rem; font-weight:500; margin-bottom:0.3rem; }
+  .start-card .sub { font-size:0.62rem; color:var(--muted); line-height:1.5; }
+
+  .bottom-bar { display:flex; align-items:center; gap:0.6rem; padding:0.6rem 1rem; background:var(--surface); border-top:1px solid var(--border); flex-wrap:wrap; }
+  .bottom-bar .btn { padding:0.5rem 0.9rem; background:none; border:1px solid var(--border); font-family:'Raleway',sans-serif; font-size:0.65rem; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; }
+  .bottom-bar .btn:hover { border-color:var(--teal); }
+  .bottom-bar .btn.primary { background:var(--teal); color:#fff; border-color:var(--teal); }
+  .bottom-bar label.btn { cursor:pointer; }
+  .table-list-field { display:flex; align-items:center; gap:0.5rem; font-size:0.65rem; color:var(--muted); }
+  .table-list-field input { padding:0.4rem 0.5rem; font-family:'Raleway',sans-serif; font-size:0.72rem; border:1px solid var(--border); background:var(--surface2); width:220px; }
+  input[type=file] { display:none; }
+
+  .picker { position:absolute; background:var(--surface); border:1px solid var(--border); box-shadow:0 4px 14px rgba(0,0,0,0.18); padding:0.5rem; z-index:50; max-width:220px; }
+  .picker-title { font-size:0.58rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.3rem 0.5rem; }
+  .picker-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; margin-bottom:0.4rem; }
+  .picker-num { padding:0.4rem 0; text-align:center; font-size:0.72rem; background:var(--surface2); border:1px solid var(--border); cursor:pointer; }
+  .picker-num:hover { border-color:var(--teal); }
+  .picker-num.current { background:var(--teal); color:#fff; border-color:var(--teal); }
+  .picker-num.taken { opacity:0.3; cursor:not-allowed; text-decoration:line-through; }
+  .picker-remove { width:100%; padding:0.35rem; font-size:0.62rem; color:var(--red); background:none; border:1px solid #e2b8b8; cursor:pointer; letter-spacing:0.05em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">Floor Plan Wizard — prototype</div>
+  <div class="header-note">Standalone test build — not yet connected to a venue</div>
+</div>
+
+<div id="start-screen" class="start-screen">
+  <div class="start-title">How do you want to start?</div>
+  <div class="start-options">
+    <div class="start-card" id="start-photo">
+      <div class="icon">📷</div>
+      <div class="label">Upload a Photo</div>
+      <div class="sub">Use a real photo of the room and crop it to fit.</div>
+    </div>
+    <div class="start-card" id="start-draw">
+      <div class="icon">✏️</div>
+      <div class="label">Draw My Own</div>
+      <div class="sub">Build a simple layout from circles and rectangles.</div>
+    </div>
+  </div>
+  <input type="file" id="photo-input" accept="image/*">
+</div>
+
+<div id="editor" style="display:none; flex-direction:column; min-height:0; flex:1;">
+  <div class="toolbar">
+    <button class="tool-btn" data-tool="ellipse">◯ Ellipse</button>
+    <button class="tool-btn" data-tool="rect">▭ Rectangle</button>
+    <button class="tool-btn" data-tool="entrance"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 2v12M13 2v12M3 8h10" stroke="currentColor" stroke-width="1.6" fill="none"/></svg> Entrance</button>
+    <button class="tool-btn" data-tool="move">✛ Move / Resize</button>
+    <button class="tool-btn" data-tool="number">① Number</button>
+    <select id="number-size-select" style="font-size:0.65rem;padding:0.4rem;border:1px solid var(--border);background:var(--surface2);">
+      <option value="small">Small text</option>
+      <option value="medium" selected>Medium text</option>
+      <option value="large">Large text</option>
+    </select>
+    <button class="tool-btn" data-tool="crop" id="crop-tool-btn">⬛ Crop</button>
+    <div class="tool-sep"></div>
+    <button class="toggle-btn" id="grid-toggle">▦ Snap to grid</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="copy-btn" title="Ctrl+C">Copy</button>
+    <button class="tool-btn" id="paste-btn" title="Ctrl+V">Paste</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="undo-btn" title="Ctrl+Z">↶ Undo</button>
+    <button class="tool-btn" id="redo-btn" title="Ctrl+Shift+Z">↷ Redo</button>
+    <div class="spacer"></div>
+    <div class="zoom-row" id="zoom-row" style="display:none;">
+      <span style="font-size:0.62rem;color:var(--muted);">Zoom</span>
+      <input type="range" id="zoom-slider" min="0" max="100" value="0">
+    </div>
+    <div class="count-pill" id="count-pill">0 of 0 placed</div>
+  </div>
+
+  <div class="stage-wrap">
+    <canvas id="canvas" width="960" height="540"></canvas>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn" id="start-over-btn">Start Over</button>
+    <div class="table-list-field" id="table-list-field">
+      Venue table numbers:
+      <input type="text" id="table-list-input" value="1,2,3,4,5,10,20,21,22">
+      <button class="btn" id="apply-tables-btn" style="padding:0.3rem 0.6rem;">Apply</button>
+    </div>
+    <div class="spacer"></div>
+    <label class="btn" for="load-input">Load Layout</label>
+    <input type="file" id="load-input" accept="application/json">
+    <button class="btn" id="save-btn">Save Layout (JSON)</button>
+    <button class="btn" id="export-btn">Export Floor Plan (PNG)</button>
+    <button class="btn primary" id="save-to-venue-btn" style="display:none;">Save to Venue</button>
+  </div>
+</div>
+
+<script>
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height; // 960x540, fixed 16:9
+
+  // ─── STATE ──────────────────────────────────────────────────────────────────
+  var state = {
+    mode: null,          // 'photo' | 'draw'
+    shapes: [],          // { id, kind:'ellipse'|'rect', x, y, w, h }  x,y = center
+    numbers: []          // { id, value, x, y }
+  };
+  var photoImg = null;                 // the uploaded <img>, kept outside the undo history
+  var imageTransform = { x: 0, y: 0, scale: 1 }; // pan/zoom for crop mode
+  var tableNumbers = [];
+  var currentTool = 'move';
+  var gridSnap = false;
+  var GRID = 24;
+  var SNAP_PX = 8; // how close a size has to be to count as "matching"
+  var NUMBER_SIZES = { small: { r: 12, font: 10 }, medium: { r: 16, font: 12 }, large: { r: 22, font: 16 } };
+  var numberSize = 'medium';
+  document.getElementById('number-size-select').addEventListener('change', function() {
+    numberSize = this.value;
+    pushHistory(); draw();
+  });
+  var nextId = 1;
+  function uid() { return 'id' + (nextId++); }
+
+  var undoHistory = [];
+  var historyIndex = -1;
+
+  function snapshot() {
+    return JSON.parse(JSON.stringify({
+      shapes: state.shapes, numbers: state.numbers, imageTransform: imageTransform
+    }));
+  }
+  function pushHistory() {
+    var snap = snapshot();
+    var current = undoHistory[historyIndex];
+    // A click that selects or collapses a selection without actually moving,
+    // resizing, or changing anything still triggers this call — skip saving
+    // a checkpoint when nothing in the data actually changed.
+    if (current && JSON.stringify(current) === JSON.stringify(snap)) return;
+    undoHistory = undoHistory.slice(0, historyIndex + 1);
+    undoHistory.push(snap);
+    historyIndex++;
+    updateUndoRedoButtons();
+  }
+  function restore(snap) {
+    // Deep-clone on the way back in too — assigning the stored arrays
+    // directly would leave the live state and that history entry pointing
+    // at the same objects, so a later edit could silently corrupt the past.
+    state.shapes = JSON.parse(JSON.stringify(snap.shapes));
+    state.numbers = JSON.parse(JSON.stringify(snap.numbers));
+    imageTransform = JSON.parse(JSON.stringify(snap.imageTransform));
+    selectedShapeIds = []; selectedNumberIds = [];
+    draw(); updateCountPill();
+  }
+  function undo() { if (historyIndex > 0) { historyIndex--; restore(undoHistory[historyIndex]); updateUndoRedoButtons(); } }
+  function redo() { if (historyIndex < undoHistory.length - 1) { historyIndex++; restore(undoHistory[historyIndex]); updateUndoRedoButtons(); } }
+  function updateUndoRedoButtons() {
+    document.getElementById('undo-btn').disabled = historyIndex <= 0;
+    document.getElementById('redo-btn').disabled = historyIndex >= undoHistory.length - 1;
+  }
+
+  function updateCopyPasteButtons() {
+    document.getElementById('copy-btn').disabled = selectedShapeIds.length === 0;
+    document.getElementById('paste-btn').disabled = clipboard.length === 0;
+  }
+
+  // Copy/paste is shapes only — a duplicated table number wouldn't mean
+  // anything, so a pasted shape never brings a copy of its original's number.
+  function copySelection() {
+    if (!selectedShapeIds.length) return;
+    clipboard = selectedShapeIds.map(function(id) {
+      var s = state.shapes.find(function(sh) { return sh.id === id; });
+      return Object.assign({}, s);
+    });
+    updateCopyPasteButtons();
+  }
+  function pasteClipboard() {
+    if (!clipboard.length) return;
+    var newIds = clipboard.map(function(orig) {
+      var copy = Object.assign({}, orig, { id: uid(), x: orig.x + 24, y: orig.y + 24 });
+      state.shapes.push(copy);
+      return copy.id;
+    });
+    selectedShapeIds = newIds; selectedNumberIds = [];
+    pushHistory(); draw();
+  }
+  document.getElementById('copy-btn').addEventListener('click', copySelection);
+  document.getElementById('paste-btn').addEventListener('click', pasteClipboard);
+
+  window.addEventListener('keydown', function(e) {
+    var mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    if (e.key.toLowerCase() === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
+    else if (e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+    else if (e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    else if (e.key.toLowerCase() === 'c' && currentTool === 'move') { e.preventDefault(); copySelection(); }
+    else if (e.key.toLowerCase() === 'v' && currentTool === 'move') { e.preventDefault(); pasteClipboard(); }
+  });
+
+  // ─── START SCREEN ───────────────────────────────────────────────────────────
+  document.getElementById('start-photo').addEventListener('click', function() {
+    document.getElementById('photo-input').click();
+  });
+  document.getElementById('photo-input').addEventListener('change', function() {
+    var file = this.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      var img = new Image();
+      img.onload = function() {
+        photoImg = img;
+        var coverScale = Math.max(W / img.width, H / img.height);
+        imageTransform = { x: 0, y: 0, scale: coverScale };
+        startEditor('photo');
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('start-draw').addEventListener('click', function() { startEditor('draw'); });
+
+  // Shapes only ever make sense when drawing from scratch — a real photo
+  // already has real walls and furniture, so there's nothing to draw on it.
+  function updateToolAvailability(mode) {
+    document.querySelector('[data-tool="ellipse"]').style.display = mode === 'draw' ? 'flex' : 'none';
+    document.querySelector('[data-tool="rect"]').style.display = mode === 'draw' ? 'flex' : 'none';
+    document.querySelector('[data-tool="entrance"]').style.display = mode === 'draw' ? 'flex' : 'none';
+    document.getElementById('crop-tool-btn').style.display = mode === 'photo' ? 'flex' : 'none';
+  }
+
+  function startEditor(mode) {
+    state.mode = mode;
+    state.shapes = []; state.numbers = [];
+    undoHistory = []; historyIndex = -1;
+    applyTableList();
+    resumeDesignIfAny(mode); // overwrites shapes/numbers and pushes its own baseline if a matching design was sent in
+    if (!undoHistory.length) pushHistory();
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('editor').style.display = 'flex';
+    updateToolAvailability(mode);
+    setTool(mode === 'photo' ? 'crop' : 'move');
+    draw();
+  }
+  document.getElementById('start-over-btn').addEventListener('click', function() {
+    if (!confirm('Start over? This clears the current layout.')) return;
+    document.getElementById('editor').style.display = 'none';
+    document.getElementById('start-screen').style.display = 'flex';
+    document.getElementById('photo-input').value = '';
+    photoImg = null;
+  });
+
+  // ─── TABLE NUMBER LIST ──────────────────────────────────────────────────────
+  function applyTableList() {
+    var raw = document.getElementById('table-list-input').value;
+    tableNumbers = raw.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; });
+    updateCountPill();
+  }
+  document.getElementById('apply-tables-btn').addEventListener('click', applyTableList);
+
+  // ─── EMBEDDED MODE (running inside the dashboard's Floor Plan tab) ─────────
+  var isEmbedded = window.parent !== window;
+  var pendingDesign = null; // an existing design to resume, if the parent sent one
+
+  if (isEmbedded) {
+    document.getElementById('table-list-field').style.display = 'none';
+    document.getElementById('save-to-venue-btn').style.display = 'block';
+    window.parent.postMessage({ type: 'floorplan-wizard-ready' }, '*');
+  }
+
+  window.addEventListener('message', function(e) {
+    var data = e.data || {};
+    if (data.type !== 'floorplan-init') return;
+    tableNumbers = data.tableNumbers || [];
+    document.getElementById('table-list-input').value = tableNumbers.join(',');
+    updateCountPill();
+    if (data.design) pendingDesign = data.design;
+  });
+
+  function resumeDesignIfAny(mode) {
+    if (!pendingDesign || pendingDesign.mode !== mode) return;
+    state.shapes = pendingDesign.shapes || [];
+    state.numbers = pendingDesign.numbers || [];
+    numberSize = pendingDesign.numberSize || 'medium';
+    document.getElementById('number-size-select').value = numberSize;
+    if (mode === 'photo' && pendingDesign.imageTransform) imageTransform = pendingDesign.imageTransform;
+    var maxId = 0;
+    state.shapes.concat(state.numbers).forEach(function(o) { maxId = Math.max(maxId, parseInt((o.id || '').replace('id', '')) || 0); });
+    nextId = maxId + 1;
+    undoHistory = []; historyIndex = -1; pushHistory();
+  }
+
+  document.getElementById('save-to-venue-btn').addEventListener('click', function() {
+    var wasShapes = selectedShapeIds, wasNumbers = selectedNumberIds;
+    selectedShapeIds = []; selectedNumberIds = [];
+    draw();
+    var png = canvas.toDataURL('image/png');
+    selectedShapeIds = wasShapes; selectedNumberIds = wasNumbers; draw();
+
+    var design = { mode: state.mode, shapes: state.shapes, numbers: state.numbers, numberSize: numberSize };
+    if (state.mode === 'photo') design.imageTransform = imageTransform;
+    window.parent.postMessage({ type: 'floorplan-save', png: png, design: design }, '*');
+  });
+  function updateCountPill() {
+    document.getElementById('count-pill').textContent = state.numbers.length + ' of ' + tableNumbers.length + ' placed';
+  }
+
+  // ─── TOOL SWITCHING ─────────────────────────────────────────────────────────
+  function setTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.tool-btn[data-tool]').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.tool === tool);
+    });
+    canvas.className = 'tool-' + tool;
+    canvas.style.cursor = '';
+    document.getElementById('zoom-row').style.display = tool === 'crop' ? 'flex' : 'none';
+    if (tool === 'crop' && photoImg) {
+      var minScale = Math.max(W / photoImg.width, H / photoImg.height);
+      var maxScale = minScale * 3;
+      var pct = (imageTransform.scale - minScale) / (maxScale - minScale) * 100;
+      document.getElementById('zoom-slider').value = Math.round(pct);
+    }
+    selectedShapeIds = [];
+    selectedNumberIds = [];
+    closePicker();
+    draw();
+  }
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(function(btn) {
+    btn.addEventListener('click', function() { setTool(btn.dataset.tool); });
+  });
+  document.getElementById('grid-toggle').addEventListener('click', function() {
+    gridSnap = !gridSnap;
+    this.classList.toggle('on', gridSnap);
+    draw();
+  });
+  document.getElementById('undo-btn').addEventListener('click', undo);
+  document.getElementById('redo-btn').addEventListener('click', redo);
+
+  document.getElementById('zoom-slider').addEventListener('input', function() {
+    if (!photoImg) return;
+    var minScale = Math.max(W / photoImg.width, H / photoImg.height);
+    var maxScale = minScale * 3;
+    var newScale = minScale + (maxScale - minScale) * (this.value / 100);
+    rescaleImage(newScale);
+    draw();
+  });
+  document.getElementById('zoom-slider').addEventListener('change', function() { pushHistory(); });
+
+  function rescaleImage(newScale) {
+    // Keep the view centered on the same point while the scale changes
+    var cx = W / 2, cy = H / 2;
+    var imgCx = (cx - imageTransform.x) / imageTransform.scale;
+    var imgCy = (cy - imageTransform.y) / imageTransform.scale;
+    imageTransform.scale = newScale;
+    imageTransform.x = cx - imgCx * newScale;
+    imageTransform.y = cy - imgCy * newScale;
+    clampImageTransform();
+  }
+  function clampImageTransform() {
+    var dispW = photoImg.width * imageTransform.scale, dispH = photoImg.height * imageTransform.scale;
+    imageTransform.x = Math.min(0, Math.max(W - dispW, imageTransform.x));
+    imageTransform.y = Math.min(0, Math.max(H - dispH, imageTransform.y));
+  }
+
+  // ─── RENDERING ──────────────────────────────────────────────────────────────
+  var highlightShapeId = null; // transient, set only while a size-match is active during draw/resize
+
+  function toggleShapeSelection(id) {
+    var i = selectedShapeIds.indexOf(id);
+    if (i > -1) selectedShapeIds.splice(i, 1); else selectedShapeIds.push(id);
+  }
+  function toggleNumberSelection(id) {
+    var i = selectedNumberIds.indexOf(id);
+    if (i > -1) selectedNumberIds.splice(i, 1); else selectedNumberIds.push(id);
+  }
+  function groupBounds(ids) {
+    var list = state.shapes.filter(function(s) { return ids.indexOf(s.id) > -1; });
+    return {
+      left: Math.min.apply(null, list.map(function(s) { return s.x - s.w / 2; })),
+      top: Math.min.apply(null, list.map(function(s) { return s.y - s.h / 2; })),
+      right: Math.max.apply(null, list.map(function(s) { return s.x + s.w / 2; })),
+      bottom: Math.max.apply(null, list.map(function(s) { return s.y + s.h / 2; }))
+    };
+  }
+  function groupHandlePositions(b) {
+    return [
+      { x: b.left, y: b.top, type: 'corner-tl' }, { x: b.right, y: b.top, type: 'corner-tr' },
+      { x: b.left, y: b.bottom, type: 'corner-bl' }, { x: b.right, y: b.bottom, type: 'corner-br' }
+    ];
+  }
+
+  // Draws one shape's symbol in its own local space — the caller is expected
+  // to have already translated (and, for a committed shape, rotated) the
+  // canvas context to that shape's center before calling this.
+  function drawShapeGlyph(s, outlineOnly) {
+    if (s.kind === 'ellipse') {
+      ctx.beginPath(); ctx.ellipse(0, 0, s.w / 2, s.h / 2, 0, 0, Math.PI * 2);
+      if (!outlineOnly) ctx.fill();
+      ctx.stroke();
+    } else if (s.kind === 'entrance') {
+      // The elongated "H" doorway symbol: two full-height uprights with one
+      // crossbar through the middle, same convention as a house plan.
+      ctx.beginPath();
+      ctx.moveTo(-s.w / 2, -s.h / 2); ctx.lineTo(-s.w / 2, s.h / 2);
+      ctx.moveTo(s.w / 2, -s.h / 2); ctx.lineTo(s.w / 2, s.h / 2);
+      ctx.moveTo(-s.w / 2, 0); ctx.lineTo(s.w / 2, 0);
+      ctx.stroke();
+    } else {
+      if (!outlineOnly) ctx.fillRect(-s.w / 2, -s.h / 2, s.w, s.h);
+      ctx.strokeRect(-s.w / 2, -s.h / 2, s.w, s.h);
+    }
+  }
+
+  function draw() {
+    updateCopyPasteButtons();
+    ctx.clearRect(0, 0, W, H);
+
+    if (state.mode === 'photo' && photoImg) {
+      ctx.drawImage(photoImg, imageTransform.x, imageTransform.y, photoImg.width * imageTransform.scale, photoImg.height * imageTransform.scale);
+    } else {
+      ctx.fillStyle = '#faf9f6'; ctx.fillRect(0, 0, W, H);
+    }
+
+    if (gridSnap) {
+      ctx.strokeStyle = 'rgba(39,53,52,0.08)'; ctx.lineWidth = 1;
+      for (var gx = 0; gx <= W; gx += GRID) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+      for (var gy = 0; gy <= H; gy += GRID) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+    }
+
+    state.shapes.forEach(function(s) {
+      var isHighlighted = s.id === highlightShapeId;
+      var isSelected = selectedShapeIds.indexOf(s.id) > -1;
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate((s.rotation || 0) * Math.PI / 180);
+      ctx.lineWidth = isHighlighted ? 3 : 2;
+      ctx.strokeStyle = isHighlighted ? '#7a6545' : (isSelected ? '#a3854f' : 'rgba(39,53,52,0.85)');
+      ctx.fillStyle = 'rgba(100,100,100,0.18)';
+      drawShapeGlyph(s);
+      ctx.restore();
+      if (isSelected && selectedShapeIds.length === 1) drawHandles(s);
+    });
+
+    if (selectedShapeIds.length >= 2) {
+      var gb = groupBounds(selectedShapeIds);
+      ctx.save();
+      ctx.strokeStyle = '#7a6545'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+      ctx.strokeRect(gb.left - 6, gb.top - 6, (gb.right - gb.left) + 12, (gb.bottom - gb.top) + 12);
+      ctx.restore();
+      ctx.fillStyle = '#7a6545';
+      groupHandlePositions(gb).forEach(function(h) { ctx.beginPath(); ctx.arc(h.x, h.y, 5, 0, Math.PI * 2); ctx.fill(); });
+    }
+
+    if (draftShape) {
+      ctx.save();
+      ctx.translate(draftShape.x, draftShape.y);
+      ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.strokeStyle = '#273534';
+      ctx.fillStyle = 'rgba(0,0,0,0)';
+      drawShapeGlyph(draftShape, true);
+      ctx.restore();
+      ctx.setLineDash([]);
+    }
+
+    state.numbers.forEach(function(n) {
+      var isSelNum = selectedNumberIds.indexOf(n.id) > -1;
+      var sz = NUMBER_SIZES[numberSize];
+      var p = numberPos(n);
+      ctx.beginPath(); ctx.arc(p.x, p.y, sz.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#273534'; ctx.fill();
+      ctx.lineWidth = isSelNum ? 3 : 1.5; ctx.strokeStyle = isSelNum ? '#7a6545' : '#fff'; ctx.stroke();
+      ctx.font = '600 ' + sz.font + 'px Raleway, sans-serif'; ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(n.value, p.x, p.y);
+    });
+  }
+
+  var ROTATE_HANDLE_OFFSET = 24; // px above the shape's (unrotated) top edge
+
+  function toLocal(x, y, s) {
+    var rad = -(s.rotation || 0) * Math.PI / 180;
+    var dx = x - s.x, dy = y - s.y;
+    return { x: dx * Math.cos(rad) - dy * Math.sin(rad), y: dx * Math.sin(rad) + dy * Math.cos(rad) };
+  }
+  function fromLocal(lx, ly, s) {
+    var rad = (s.rotation || 0) * Math.PI / 180;
+    return { x: s.x + lx * Math.cos(rad) - ly * Math.sin(rad), y: s.y + lx * Math.sin(rad) + ly * Math.cos(rad) };
+  }
+
+  function handlePositions(s) {
+    var local = [
+      { x: -s.w / 2, y: -s.h / 2, type: 'corner-tl' }, { x: s.w / 2, y: -s.h / 2, type: 'corner-tr' },
+      { x: -s.w / 2, y: s.h / 2, type: 'corner-bl' }, { x: s.w / 2, y: s.h / 2, type: 'corner-br' },
+      { x: 0, y: -s.h / 2 - ROTATE_HANDLE_OFFSET, type: 'rotate' }
+    ];
+    return local.map(function(h) {
+      var p = fromLocal(h.x, h.y, s);
+      return { x: p.x, y: p.y, type: h.type };
+    });
+  }
+  function drawHandles(s) {
+    var handles = handlePositions(s);
+    var topCenter = fromLocal(0, -s.h / 2, s);
+    var rotateHandle = handles.filter(function(h) { return h.type === 'rotate'; })[0];
+    ctx.strokeStyle = '#7a6545'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(topCenter.x, topCenter.y); ctx.lineTo(rotateHandle.x, rotateHandle.y); ctx.stroke();
+    ctx.fillStyle = '#7a6545';
+    handles.forEach(function(h) {
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, h.type === 'rotate' ? 6 : 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // ─── SIZE MATCHING (same shape-kind only; width/height snap independently) ──
+  function findSizeMatch(kind, w, h, excludeId) {
+    var best = null;
+    state.shapes.forEach(function(s) {
+      if (s.kind !== kind || s.id === excludeId) return;
+      var dw = Math.abs(s.w - w), dh = Math.abs(s.h - h);
+      if (dw < SNAP_PX || dh < SNAP_PX) {
+        var score = Math.min(dw, dh);
+        if (!best || score < best.score) best = { id: s.id, score: score, w: dw < SNAP_PX ? s.w : w, h: dh < SNAP_PX ? s.h : h };
+      }
+    });
+    return best;
+  }
+  function snapToGrid(v) { return gridSnap ? Math.round(v / GRID) * GRID : v; }
+
+  // ─── CANVAS POINTER HANDLING ────────────────────────────────────────────────
+  var draftShape = null;     // the shape being drawn right now
+  var selectedShapeIds = [];
+  var selectedNumberIds = [];
+  var dragMode = null;       // 'move' | 'resize' | 'pan' | 'draft' | 'group-resize' | 'maybe-group-move-shape' | 'maybe-group-move-number'
+  var dragStart = null;
+  var dragOrigShape = null;
+  var activeHandle = null;
+  var dragOrigShapesSnapshot = null;   // for group move / group resize
+  var dragOrigNumbersSnapshot = null;  // for group move of numbers
+  var dragOrigGroupBounds = null;
+  var rotateStartAngle = 0;
+  var pendingClickTargetId = null;     // the single item to collapse to, if this turns out to be a click not a drag
+  var realDragHappened = false;
+  var DRAG_THRESHOLD = 4;
+  var clipboard = [];
+
+  function canvasPoint(e) {
+    var rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) * (W / rect.width), y: (e.clientY - rect.top) * (H / rect.height) };
+  }
+  function numberPos(n) {
+    if (n.shapeId) {
+      var s = state.shapes.find(function(sh) { return sh.id === n.shapeId; });
+      if (s) return fromLocal(n.relX * s.w, n.relY * s.h, s);
+    }
+    return { x: n.x, y: n.y };
+  }
+
+  function hitTestShape(x, y) {
+    for (var i = state.shapes.length - 1; i >= 0; i--) {
+      var s = state.shapes[i];
+      var local = toLocal(x, y, s);
+      if (s.kind === 'ellipse') {
+        var nx = local.x / (s.w / 2), ny = local.y / (s.h / 2);
+        if (nx * nx + ny * ny <= 1) return s;
+      } else {
+        if (Math.abs(local.x) <= s.w / 2 && Math.abs(local.y) <= s.h / 2) return s;
+      }
+    }
+    return null;
+  }
+  var ROTATE_CURSOR = "url('data:image/svg+xml;utf8," +
+    "<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22>" +
+    "<path d=%22M10 3a7 7 0 1 1-5.2 11.6%22 fill=%22none%22 stroke=%22%23273534%22 stroke-width=%222%22/>" +
+    "<path d=%22M2 11l1.5-4.7L8 8z%22 fill=%22%23273534%22/></svg>') 10 10, auto";
+  var HANDLE_CURSORS = {
+    'corner-tl': 'nwse-resize', 'corner-br': 'nwse-resize',
+    'corner-tr': 'nesw-resize', 'corner-bl': 'nesw-resize',
+    'rotate': ROTATE_CURSOR
+  };
+  // The diagonal resize cursors don't rotate with the shape — a corner on a
+  // 40-degree-rotated shape still shows the same cursor it would unrotated.
+  function updateHoverCursor(pt) {
+    if (currentTool !== 'move') { canvas.style.cursor = ''; return; }
+    var handleHit = hitTestHandle(pt.x, pt.y);
+    canvas.style.cursor = handleHit ? (HANDLE_CURSORS[handleHit.handle.type] || 'pointer') : '';
+  }
+
+  function hitTestHandle(x, y) {
+    if (selectedShapeIds.length >= 2) {
+      var gb = groupBounds(selectedShapeIds);
+      var gHit = groupHandlePositions(gb).filter(function(h) { return Math.hypot(x - h.x, y - h.y) <= 8; })[0];
+      return gHit ? { isGroup: true, handle: gHit, bounds: gb } : null;
+    }
+    if (selectedShapeIds.length === 1) {
+      var s = state.shapes.find(function(sh) { return sh.id === selectedShapeIds[0]; });
+      if (!s) return null;
+      var hit = handlePositions(s).filter(function(h) { return Math.hypot(x - h.x, y - h.y) <= 8; })[0];
+      return hit ? { shape: s, handle: hit } : null;
+    }
+    return null;
+  }
+  function hitTestNumber(x, y) {
+    var r = NUMBER_SIZES[numberSize].r;
+    for (var i = state.numbers.length - 1; i >= 0; i--) {
+      var p = numberPos(state.numbers[i]);
+      if (Math.hypot(x - p.x, y - p.y) <= r) return state.numbers[i];
+    }
+    return null;
+  }
+
+  // A number landing inside a shape attaches to it: its position is stored as
+  // a fraction of that shape's width/height, so it rides along correctly
+  // through every later move or resize of that shape. Landing in empty space
+  // detaches it back to a plain, independently-positioned number.
+  function attachNumberIfInsideShape(n) {
+    var host = hitTestShape(n.x, n.y);
+    if (host) {
+      var local = toLocal(n.x, n.y, host);
+      n.shapeId = host.id;
+      n.relX = local.x / host.w;
+      n.relY = local.y / host.h;
+    } else {
+      n.shapeId = null;
+    }
+  }
+
+  canvas.addEventListener('mousedown', function(e) {
+    var pt = canvasPoint(e);
+
+    if (currentTool === 'number') {
+      var existing = hitTestNumber(pt.x, pt.y);
+      openPicker(e, pt, existing || null);
+      return;
+    }
+
+    if (currentTool === 'ellipse' || currentTool === 'rect' || currentTool === 'entrance') {
+      dragMode = 'draft'; dragStart = pt;
+      draftShape = { id: null, kind: currentTool, x: pt.x, y: pt.y, w: 0, h: 0, rotation: 0 };
+      return;
+    }
+
+    if (currentTool === 'move') {
+      var handleHit = hitTestHandle(pt.x, pt.y);
+      if (handleHit) {
+        if (handleHit.isGroup) {
+          dragMode = 'group-resize'; dragStart = pt; activeHandle = handleHit.handle;
+          dragOrigGroupBounds = handleHit.bounds;
+          dragOrigShapesSnapshot = selectedShapeIds.map(function(id) { return Object.assign({}, state.shapes.find(function(s) { return s.id === id; })); });
+        } else if (handleHit.handle.type === 'rotate') {
+          dragMode = 'rotate'; dragStart = pt;
+          dragOrigShape = Object.assign({}, handleHit.shape);
+          rotateStartAngle = Math.atan2(pt.y - handleHit.shape.y, pt.x - handleHit.shape.x) * 180 / Math.PI;
+        } else {
+          dragMode = 'resize'; dragStart = pt; activeHandle = handleHit.handle;
+          dragOrigShape = Object.assign({}, handleHit.shape);
+        }
+        return;
+      }
+
+      var numHit = hitTestNumber(pt.x, pt.y);
+      if (numHit) {
+        if (e.shiftKey) {
+          selectedShapeIds = [];
+          toggleNumberSelection(numHit.id);
+          draw();
+          return;
+        }
+        if (selectedNumberIds.indexOf(numHit.id) > -1 && selectedNumberIds.length > 1) {
+          dragMode = 'maybe-group-move-number'; dragStart = pt; pendingClickTargetId = numHit.id; realDragHappened = false;
+          dragOrigNumbersSnapshot = selectedNumberIds.map(function(id) {
+            var n = state.numbers.find(function(n) { return n.id === id; });
+            return Object.assign({}, n, numberPos(n));
+          });
+        } else {
+          selectedShapeIds = []; selectedNumberIds = [numHit.id];
+          var p = numberPos(numHit);
+          numHit.x = p.x; numHit.y = p.y; numHit.shapeId = null; // free to follow the cursor; re-attached on release
+          dragMode = 'move-number'; dragStart = pt; dragOrigShape = { x: p.x, y: p.y };
+        }
+        draw();
+        return;
+      }
+
+      var hit = hitTestShape(pt.x, pt.y);
+      if (hit) {
+        if (e.shiftKey) {
+          selectedNumberIds = [];
+          toggleShapeSelection(hit.id);
+          draw();
+          return;
+        }
+        if (selectedShapeIds.indexOf(hit.id) > -1 && selectedShapeIds.length > 1) {
+          dragMode = 'maybe-group-move-shape'; dragStart = pt; pendingClickTargetId = hit.id; realDragHappened = false;
+          dragOrigShapesSnapshot = selectedShapeIds.map(function(id) { return Object.assign({}, state.shapes.find(function(s) { return s.id === id; })); });
+        } else {
+          selectedNumberIds = []; selectedShapeIds = [hit.id];
+          dragMode = 'move'; dragStart = pt; dragOrigShape = Object.assign({}, hit);
+        }
+      } else {
+        selectedShapeIds = []; selectedNumberIds = [];
+      }
+      draw();
+      return;
+    }
+
+    if (currentTool === 'crop' && photoImg) {
+      dragMode = 'pan'; dragStart = pt; dragOrigShape = { x: imageTransform.x, y: imageTransform.y };
+    }
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    var pt = canvasPoint(e);
+    if (!dragMode) { updateHoverCursor(pt); return; }
+
+    if (dragMode === 'draft') {
+      var dx = pt.x - dragStart.x, dy = pt.y - dragStart.y;
+      var w = Math.abs(dx);
+      var h = e.shiftKey ? w : Math.abs(dy); // Shift: ellipse -> circle, rectangle -> square
+      var endX = dragStart.x + (dx >= 0 ? w : -w);
+      var endY = dragStart.y + (dy >= 0 ? h : -h);
+      var cx = (dragStart.x + endX) / 2, cy = (dragStart.y + endY) / 2;
+      var match = findSizeMatch(draftShape.kind, w, h, null);
+      highlightShapeId = match ? match.id : null;
+      if (match) { w = match.w; h = match.h; }
+      draftShape.w = w; draftShape.h = h; draftShape.x = cx; draftShape.y = cy;
+      draw();
+    }
+
+    else if (dragMode === 'move') {
+      var s = state.shapes.find(function(sh) { return sh.id === selectedShapeIds[0]; });
+      if (!s) return;
+      s.x = snapToGrid(dragOrigShape.x + (pt.x - dragStart.x));
+      s.y = snapToGrid(dragOrigShape.y + (pt.y - dragStart.y));
+      draw();
+    }
+
+    else if (dragMode === 'move-number') {
+      var n = state.numbers.find(function(n) { return n.id === selectedNumberIds[0]; });
+      if (!n) return;
+      n.x = snapToGrid(dragOrigShape.x + (pt.x - dragStart.x));
+      n.y = snapToGrid(dragOrigShape.y + (pt.y - dragStart.y));
+      draw();
+    }
+
+    else if (dragMode === 'maybe-group-move-shape' || dragMode === 'maybe-group-move-number') {
+      var dxg = pt.x - dragStart.x, dyg = pt.y - dragStart.y;
+      if (!realDragHappened && Math.hypot(dxg, dyg) > DRAG_THRESHOLD) realDragHappened = true;
+      if (realDragHappened) {
+        if (dragMode === 'maybe-group-move-shape') {
+          dragOrigShapesSnapshot.forEach(function(orig) {
+            var s2 = state.shapes.find(function(sh) { return sh.id === orig.id; });
+            if (s2) { s2.x = snapToGrid(orig.x + dxg); s2.y = snapToGrid(orig.y + dyg); }
+          });
+        } else {
+          dragOrigNumbersSnapshot.forEach(function(orig) {
+            var n2 = state.numbers.find(function(nn) { return nn.id === orig.id; });
+            if (n2) { n2.shapeId = null; n2.x = snapToGrid(orig.x + dxg); n2.y = snapToGrid(orig.y + dyg); }
+          });
+        }
+        draw();
+      }
+    }
+
+    else if (dragMode === 'resize') {
+      var s3 = state.shapes.find(function(sh) { return sh.id === selectedShapeIds[0]; });
+      if (!s3) return;
+      // Work in the shape's own (unrotated) local space, using its rotation
+      // from the start of the drag as the reference frame throughout — this
+      // is what keeps the opposite corner visually anchored even when the
+      // shape itself is rotated.
+      var localPt = toLocal(pt.x, pt.y, dragOrigShape);
+      var ol = -dragOrigShape.w / 2, orr = dragOrigShape.w / 2;
+      var ot = -dragOrigShape.h / 2, ob = dragOrigShape.h / 2;
+      var anchorLX = activeHandle.type.indexOf('l') > -1 ? orr : ol;
+      var anchorLY = activeHandle.type.indexOf('t') > -1 ? ob : ot;
+      var newW = Math.abs(localPt.x - anchorLX);
+      var newH = e.shiftKey ? newW : Math.abs(localPt.y - anchorLY);
+      var m2 = findSizeMatch(s3.kind, newW, newH, s3.id);
+      highlightShapeId = m2 ? m2.id : null;
+      var fw = m2 ? m2.w : Math.max(10, newW), fh = m2 ? m2.h : Math.max(10, newH);
+      var endLX = anchorLX + (localPt.x >= anchorLX ? fw : -fw);
+      var endLY = anchorLY + (localPt.y >= anchorLY ? fh : -fh);
+      var newCenter = fromLocal((anchorLX + endLX) / 2, (anchorLY + endLY) / 2, dragOrigShape);
+      s3.x = newCenter.x; s3.y = newCenter.y;
+      s3.w = fw; s3.h = fh;
+      draw();
+    }
+
+    else if (dragMode === 'rotate') {
+      var s5 = state.shapes.find(function(sh) { return sh.id === selectedShapeIds[0]; });
+      if (!s5) return;
+      var currentAngle = Math.atan2(pt.y - s5.y, pt.x - s5.x) * 180 / Math.PI;
+      var delta = currentAngle - rotateStartAngle;
+      var raw = (dragOrigShape.rotation || 0) + delta;
+      s5.rotation = Math.round(raw / 15) * 15;
+      draw();
+    }
+
+    else if (dragMode === 'group-resize') {
+      var gb = dragOrigGroupBounds;
+      var anchorGX = activeHandle.type.indexOf('l') > -1 ? gb.right : gb.left;
+      var anchorGY = activeHandle.type.indexOf('t') > -1 ? gb.bottom : gb.top;
+      var origW = gb.right - gb.left, origH = gb.bottom - gb.top;
+      var scaleX = Math.abs(pt.x - anchorGX) / origW;
+      var scaleY = e.shiftKey ? scaleX : Math.abs(pt.y - anchorGY) / origH;
+      dragOrigShapesSnapshot.forEach(function(orig) {
+        var s4 = state.shapes.find(function(sh) { return sh.id === orig.id; });
+        if (!s4) return;
+        var origLeft = orig.x - orig.w / 2, origTop = orig.y - orig.h / 2;
+        s4.w = Math.max(6, orig.w * scaleX);
+        s4.h = Math.max(6, orig.h * scaleY);
+        s4.x = anchorGX + (origLeft - anchorGX) * scaleX + s4.w / 2;
+        s4.y = anchorGY + (origTop - anchorGY) * scaleY + s4.h / 2;
+      });
+      draw();
+    }
+
+    else if (dragMode === 'pan') {
+      imageTransform.x = dragOrigShape.x + (pt.x - dragStart.x);
+      imageTransform.y = dragOrigShape.y + (pt.y - dragStart.y);
+      clampImageTransform();
+      draw();
+    }
+  });
+
+  window.addEventListener('mouseup', function() {
+    if (dragMode === 'draft' && draftShape && draftShape.w > 6) {
+      draftShape.id = uid();
+      state.shapes.push(draftShape);
+      selectedShapeIds = [draftShape.id]; selectedNumberIds = [];
+    }
+
+    if (dragMode === 'move-number') {
+      var n = state.numbers.find(function(nn) { return nn.id === selectedNumberIds[0]; });
+      if (n) attachNumberIfInsideShape(n);
+    }
+    if (dragMode === 'maybe-group-move-number' && realDragHappened) {
+      selectedNumberIds.forEach(function(id) {
+        var n2 = state.numbers.find(function(nn) { return nn.id === id; });
+        if (n2) attachNumberIfInsideShape(n2);
+      });
+    }
+
+    var wasPendingClick = (dragMode === 'maybe-group-move-shape' || dragMode === 'maybe-group-move-number') && !realDragHappened;
+    if (wasPendingClick) {
+      if (dragMode === 'maybe-group-move-shape') selectedShapeIds = [pendingClickTargetId];
+      else selectedNumberIds = [pendingClickTargetId];
+    }
+
+    if (dragMode) {
+      draftShape = null; highlightShapeId = null; dragMode = null; dragOrigShape = null;
+      dragOrigShapesSnapshot = null; dragOrigNumbersSnapshot = null; dragOrigGroupBounds = null;
+      activeHandle = null; pendingClickTargetId = null; realDragHappened = false;
+      pushHistory(); draw();
+    }
+  });
+
+  window.addEventListener('keydown', function(e) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && currentTool === 'move' && (selectedShapeIds.length || selectedNumberIds.length)) {
+      var active = document.activeElement;
+      if (active && (active.tagName === 'INPUT')) return; // don't eat deletes while typing
+      if (selectedShapeIds.length) {
+        // A shape's attached numbers represent real tables that no longer
+        // have a shape, so they're removed along with it rather than left
+        // floating or orphaned.
+        state.numbers = state.numbers.filter(function(n) { return selectedShapeIds.indexOf(n.shapeId) === -1; });
+        state.shapes = state.shapes.filter(function(s) { return selectedShapeIds.indexOf(s.id) === -1; });
+        selectedShapeIds = [];
+      } else {
+        state.numbers = state.numbers.filter(function(n) { return selectedNumberIds.indexOf(n.id) === -1; });
+        selectedNumberIds = [];
+      }
+      updateCountPill();
+      pushHistory(); draw();
+    }
+  });
+
+  // ─── NUMBER PICKER ──────────────────────────────────────────────────────────
+  var pickerEl = null;
+  var pickerTarget = null; // { x, y, editingNumberId }
+
+  function closePicker() {
+    if (pickerEl) { pickerEl.remove(); pickerEl = null; }
+    pickerTarget = null;
+  }
+
+  function openPicker(e, pt, existingNumber) {
+    closePicker();
+    pickerTarget = { x: pt.x, y: pt.y, editingId: existingNumber ? existingNumber.id : null };
+    var takenValues = state.numbers
+      .filter(function(n) { return n.id !== pickerTarget.editingId; })
+      .map(function(n) { return n.value; });
+
+    pickerEl = document.createElement('div');
+    pickerEl.className = 'picker';
+    var rect = canvas.getBoundingClientRect();
+    var left = rect.left + pt.x * (rect.width / W);
+    var top = rect.top + pt.y * (rect.height / H);
+    pickerEl.style.left = Math.min(left, window.innerWidth - 230) + 'px';
+    pickerEl.style.top = Math.min(top, window.innerHeight - 220) + 'px';
+
+    var html = '<div class="picker-title">' + (existingNumber ? 'Change table number' : 'Place a table number') + '</div><div class="picker-grid">';
+    tableNumbers.forEach(function(num) {
+      var taken = takenValues.indexOf(num) > -1;
+      var isCurrent = existingNumber && existingNumber.value === num;
+      html += '<div class="picker-num' + (taken ? ' taken' : '') + (isCurrent ? ' current' : '') + '" data-num="' + num + '">' + num + '</div>';
+    });
+    html += '</div>';
+    if (existingNumber) html += '<button class="picker-remove" id="picker-remove-btn">Remove from plan</button>';
+    pickerEl.innerHTML = html;
+    document.body.appendChild(pickerEl);
+
+    pickerEl.querySelectorAll('.picker-num').forEach(function(el) {
+      if (el.classList.contains('taken')) return;
+      el.addEventListener('click', function() {
+        var val = el.dataset.num;
+        if (pickerTarget.editingId) {
+          var n = state.numbers.find(function(n) { return n.id === pickerTarget.editingId; });
+          if (n) n.value = val;
+        } else {
+          var newNum = { id: uid(), value: val, x: pickerTarget.x, y: pickerTarget.y, shapeId: null };
+          attachNumberIfInsideShape(newNum);
+          state.numbers.push(newNum);
+        }
+        closePicker(); pushHistory(); draw(); updateCountPill();
+      });
+    });
+    var removeBtn = document.getElementById('picker-remove-btn');
+    if (removeBtn) removeBtn.addEventListener('click', function() {
+      state.numbers = state.numbers.filter(function(n) { return n.id !== pickerTarget.editingId; });
+      closePicker(); pushHistory(); draw(); updateCountPill();
+    });
+  }
+  document.addEventListener('mousedown', function(e) {
+    if (pickerEl && !pickerEl.contains(e.target) && e.target !== canvas) closePicker();
+  });
+  window.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePicker(); });
+
+  // ─── SAVE / LOAD / EXPORT ───────────────────────────────────────────────────
+  document.getElementById('save-btn').addEventListener('click', function() {
+    var data = { version: 1, mode: state.mode, shapes: state.shapes, numbers: state.numbers, imageTransform: imageTransform, tableNumbers: tableNumbers, numberSize: numberSize };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'floor-plan-layout.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  document.getElementById('load-input').addEventListener('change', function() {
+    var file = this.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        var data = JSON.parse(reader.result);
+        if (data.mode === 'photo') { alert('This saved layout used a photo. Re-upload the same photo after loading to restore it.'); }
+        state.mode = data.mode || 'draw';
+        state.shapes = (data.shapes || []).map(function(s) { if (s.kind === 'circle') s.kind = 'ellipse'; return s; });
+        state.numbers = data.numbers || [];
+        imageTransform = data.imageTransform || { x: 0, y: 0, scale: 1 };
+        tableNumbers = data.tableNumbers || tableNumbers;
+        document.getElementById('table-list-input').value = tableNumbers.join(',');
+        numberSize = data.numberSize || 'medium';
+        document.getElementById('number-size-select').value = numberSize;
+        var maxId = 0;
+        state.shapes.concat(state.numbers).forEach(function(o) { maxId = Math.max(maxId, parseInt((o.id || '').replace('id', '')) || 0); });
+        nextId = maxId + 1;
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('editor').style.display = 'flex';
+        updateToolAvailability(state.mode);
+        setTool('move');
+        undoHistory = []; historyIndex = -1; pushHistory();
+        draw(); updateCountPill();
+      } catch (err) { alert('That file could not be read as a saved layout.'); }
+    };
+    reader.readAsText(file);
+    this.value = '';
+  });
+
+  document.getElementById('export-btn').addEventListener('click', function() {
+    var wasShapes = selectedShapeIds, wasNumbers = selectedNumberIds;
+    selectedShapeIds = []; selectedNumberIds = [];
+    draw();
+    var url = canvas.toDataURL('image/png');
+    selectedShapeIds = wasShapes; selectedNumberIds = wasNumbers; draw();
+    var a = document.createElement('a');
+    a.href = url; a.download = 'floor-plan.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  updateUndoRedoButtons();
+</script>
+</body>
+</html>
