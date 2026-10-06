@@ -98,8 +98,7 @@
     <button class="tool-btn" data-tool="move">✛ Move / Resize</button>
     <button class="tool-btn" data-tool="number">① Number</button>
     <select id="number-size-select" style="font-size:0.65rem;padding:0.4rem;border:1px solid var(--border);background:var(--surface2);">
-      <option value="small">Small text</option>
-      <option value="medium" selected>Medium text</option>
+      <option value="small" selected>Small text</option>
       <option value="large">Large text</option>
     </select>
     <button class="tool-btn" data-tool="crop" id="crop-tool-btn">⬛ Crop</button>
@@ -157,8 +156,11 @@
   var gridSnap = false;
   var GRID = 24;
   var SNAP_PX = 8; // how close a size has to be to count as "matching"
-  var NUMBER_SIZES = { small: { r: 12, font: 10 }, medium: { r: 16, font: 12 }, large: { r: 22, font: 16 } };
-  var numberSize = 'medium';
+  var NUMBER_SIZES = { small: { r: 16, font: 12 }, large: { r: 22, font: 16 } };
+  // Designs saved before there were only two sizes may say 'medium' or the old
+  // tiny 'small'. Anything that isn't 'large' opens as the (new) Small.
+  function normalizeNumberSize(v) { return v === 'large' ? 'large' : 'small'; }
+  var numberSize = 'small';
   document.getElementById('number-size-select').addEventListener('change', function() {
     numberSize = this.value;
     pushHistory(); draw();
@@ -323,7 +325,7 @@
     if (!pendingDesign || pendingDesign.mode !== mode) return;
     state.shapes = pendingDesign.shapes || [];
     state.numbers = pendingDesign.numbers || [];
-    numberSize = pendingDesign.numberSize || 'medium';
+    numberSize = normalizeNumberSize(pendingDesign.numberSize);
     document.getElementById('number-size-select').value = numberSize;
     if (mode === 'photo' && pendingDesign.imageTransform) imageTransform = pendingDesign.imageTransform;
     var maxId = 0;
@@ -1011,7 +1013,7 @@
           tableNumbers = data.tableNumbers || tableNumbers;
           document.getElementById('table-list-input').value = tableNumbers.join(',');
         }
-        numberSize = data.numberSize || 'medium';
+        numberSize = normalizeNumberSize(data.numberSize);
         document.getElementById('number-size-select').value = numberSize;
         var maxId = 0;
         state.shapes.concat(state.numbers).forEach(function(o) { maxId = Math.max(maxId, parseInt((o.id || '').replace('id', '')) || 0); });
