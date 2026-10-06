@@ -17,10 +17,11 @@
     --cream:#eae9d6; --cream-dim:#c4bfa6;
     --text:#eae9d6; --text-muted:#9aab9a;
     --teal:#273534; --plum:#6f0f43;
+    --font-body:'Raleway', sans-serif;
   }
 
   body {
-    font-family:'Raleway',sans-serif;
+    font-family:var(--font-body);
     background:var(--bg);
     color:var(--text);
     min-height:100vh;
@@ -59,7 +60,7 @@
     background:rgba(0,0,0,0.25);
     border:1px solid var(--border);
     color:var(--cream);
-    font-family:'Raleway',sans-serif;
+    font-family:var(--font-body);
     font-size:1.4rem;
     font-weight:300;
     text-align:center;
@@ -76,7 +77,7 @@
     background:transparent;
     border:1px solid var(--gold-dim);
     color:var(--gold);
-    font-family:'Raleway',sans-serif;
+    font-family:var(--font-body);
     font-size:0.72rem; font-weight:500;
     letter-spacing:0.2em; text-transform:uppercase;
     cursor:pointer;
@@ -98,7 +99,7 @@
 <body>
 <div class="container" id="entry-form">
   <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
-  <div class="prompt">Enter your table number below.</div>
+  <div class="prompt" id="entry-prompt">Enter your table number below.</div>
   <input type="number" class="table-input" id="table-input" placeholder="—" inputmode="numeric">
   <div class="error" id="error-msg"></div>
   <button class="btn" id="go-btn">Continue</button>
@@ -106,7 +107,7 @@
 </div>
 <div class="container" id="not-performing" style="display:none;">
   <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
-  <div class="prompt">The magician isn't performing here right now.</div>
+  <div class="prompt" id="not-performing-text">The magician isn't performing here right now.</div>
   <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
 </div>
 
@@ -138,11 +139,54 @@
 
   logEntryEvent('landed');
 
+  // Each line has a built-in default; a venue can override any of them in the
+  // dashboard. A blank or missing override falls back to the default. Text is
+  // only ever set with textContent, so nothing a venue types can add markup.
+  var TEXT_DEFAULTS = {
+    entryPrompt: 'Enter your table number below.',
+    entryButton: 'Continue',
+    entryError: 'Check the number and try again',
+    notPerforming: "The magician isn't performing here right now."
+  };
+  var venueTexts = {};
+  function T(key) {
+    var v = venueTexts[key];
+    return (typeof v === 'string' && v.trim()) ? v : TEXT_DEFAULTS[key];
+  }
+  function applyTexts(texts) {
+    venueTexts = texts || {};
+    document.getElementById('entry-prompt').textContent = T('entryPrompt');
+    document.getElementById('go-btn').textContent = T('entryButton');
+    document.getElementById('not-performing-text').textContent = T('notPerforming');
+  }
+
+  // The entry page only uses the body font, so only that choice is applied here.
+  var BODY_FONT_STACKS = {
+    'Raleway':   "'Raleway', sans-serif",
+    'Inter':     "'Inter', sans-serif",
+    'Work Sans': "'Work Sans', sans-serif",
+    'Jost':      "'Jost', sans-serif",
+    'Outfit':    "'Outfit', sans-serif"
+  };
+  function applyBodyFont(fonts) {
+    var f = (fonts && fonts.body) || 'Raleway';
+    if (!BODY_FONT_STACKS[f]) f = 'Raleway';
+    if (f !== 'Raleway') {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f).replace(/%20/g, '+') + '&display=swap';
+      document.head.appendChild(link);
+    }
+    document.documentElement.style.setProperty('--font-body', BODY_FONT_STACKS[f]);
+  }
+
   // Load venue colors
   // Load the venue's colors and valid table numbers from the same document
   db.collection('venues').doc(venue).get().then(function(snap) {
     if (!snap.exists) { document.getElementById('table-input').focus(); return; }
     var data = snap.data();
+    applyBodyFont(data.fonts);
+    applyTexts(data.texts);
     var colors = data.colors || {};
     var r = document.documentElement;
     if (colors.bg)        r.style.setProperty('--bg', colors.bg);
@@ -170,7 +214,7 @@
     errorEl.textContent = '';
     if (!input) return;
     if (validTables.length && !validTables.includes(input)) {
-      errorEl.textContent = 'Check the number and try again';
+      errorEl.textContent = T('entryError');
       return;
     }
     logEntryEvent('proceeded');

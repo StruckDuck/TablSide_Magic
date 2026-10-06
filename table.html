@@ -47,8 +47,8 @@
   .rule-line { flex:1; height:1px; background:var(--border); }
   .rule-diamond { width:5px; height:5px; background:var(--gold-dim); transform:rotate(45deg); flex-shrink:0; }
 
-  .headline { font-family:var(--font-display); font-size:1.6rem; color:var(--cream); text-align:center; line-height:1.3; letter-spacing:0.03em; }
-  .subtext { font-size:0.78rem; font-weight:300; color:var(--cream-dim); text-align:center; line-height:1.8; letter-spacing:0.08em; text-transform:uppercase; }
+  .headline { font-family:var(--font-display); font-size:1.6rem; color:var(--cream); text-align:center; line-height:1.3; letter-spacing:0.03em; white-space:pre-line; }
+  .subtext { font-size:0.78rem; font-weight:300; color:var(--cream-dim); text-align:center; line-height:1.8; letter-spacing:0.08em; text-transform:uppercase; white-space:pre-line; }
   .after-headline { font-family:var(--font-display); font-size:1.4rem; font-style:italic; color:var(--cream); text-align:center; line-height:1.4; }
 
   .btn-primary { width:100%; padding:1rem 2rem; background:transparent; border:1px solid var(--gold-dim); color:var(--gold); font-family:var(--font-body); font-size:0.75rem; font-weight:500; letter-spacing:0.2em; text-transform:uppercase; cursor:pointer; transition:all 0.3s; -webkit-tap-highlight-color:transparent; }
@@ -100,7 +100,7 @@
     <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
     <div class="headline">There is a magician<br>in the room tonight.</div>
     <div class="subtext">Request a performance for your table,<br>and they'll be with you shortly.</div>
-    <button class="btn-primary" id="btn-request">Yes &mdash; come to our table</button>
+    <button class="btn-primary" id="btn-request">Yes, come to our table</button>
     <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
     <div class="links" id="links-landing"></div>
     <div class="footer-name" id="footer-landing"></div>
@@ -115,7 +115,7 @@
       <div class="status-label" id="status-label">You're on the list.</div>
       <div class="status-sub" id="status-sub">The magician will be with you soon</div>
     </div>
-    <button class="btn-cancel" id="btn-cancel">Never mind &mdash; cancel our request</button>
+    <button class="btn-cancel" id="btn-cancel">Never mind, cancel our request</button>
     <div class="rule"><div class="rule-line"></div><div class="rule-diamond"></div><div class="rule-line"></div></div>
     <div class="links" id="links-queue"></div>
     <div class="footer-name" id="footer-queue"></div>
@@ -228,6 +228,41 @@
       }).join('');
     }
 
+    // ─── Wording ────────────────────────────────────────────────────────────
+    // Each line has a built-in default. A venue can override any of them in the
+    // dashboard; a blank or missing override falls back to the default. Text is
+    // only ever set with textContent, so nothing a venue types can add markup.
+    var TEXT_DEFAULTS = {
+      requestHeadline: 'There is a magician\nin the room tonight.',
+      requestSubtext: "Request a performance for your table,\nand they'll be with you shortly.",
+      requestButton: 'Yes, come to our table',
+      waitingTitle: "You're on the list.",
+      waitingSub: '{n} tables ahead of you',
+      soonTitle: 'Almost time.',
+      soonSub: 'One table ahead of you',
+      nextTitle: "You're next.",
+      nextSub: 'The magician will be with you shortly',
+      incomingTitle: 'On the way.',
+      incomingSub: 'Your magician is headed to your table',
+      cancelLink: 'Never mind, cancel our request',
+      afterHeadline: 'Thank you for having me.',
+      notPerforming: "The magician isn't performing here right now.",
+      tableUnrecognized: "This table number isn't recognized. Please check with a member of staff."
+    };
+    var venueTexts = {};
+    function T(key) {
+      var v = venueTexts[key];
+      return (typeof v === 'string' && v.trim()) ? v : TEXT_DEFAULTS[key];
+    }
+    function applyTexts(texts) {
+      venueTexts = texts || {};
+      document.querySelector('#screen-landing .headline').textContent = T('requestHeadline');
+      document.querySelector('#screen-landing .subtext').textContent = T('requestSubtext');
+      document.getElementById('btn-request').textContent = T('requestButton');
+      document.getElementById('btn-cancel').textContent = T('cancelLink');
+      document.querySelector('#screen-after .after-headline').textContent = T('afterHeadline');
+    }
+
     function applyPerformer(profile) {
       profile = profile || {};
       if (profile.name) document.title = profile.name;
@@ -251,7 +286,7 @@
     function showInvalidTable() {
       document.getElementById('container').style.display = 'none';
       var el = document.getElementById('error-screen');
-      el.textContent = "This table number isn't recognized. Please check with a member of staff.";
+      el.textContent = T('tableUnrecognized');
       el.style.display = 'block';
     }
 
@@ -263,12 +298,14 @@
       if (knownTables.length && knownTables.indexOf(table) === -1) {
         applyColors(venueData.colors);
         applyFonts(venueData.fonts);
+        applyTexts(venueData.texts);
         showInvalidTable();
         return;
       }
 
       applyColors(venueData.colors);
       applyFonts(venueData.fonts);
+      applyTexts(venueData.texts);
       renderLinksForScreen('landing', 'links-landing');
       renderLinksForScreen('queue', 'links-queue');
       renderLinksForScreen('after', 'links-after');
@@ -342,16 +379,16 @@
         var data = snap.data();
 
         if (data.status === 'on_my_way') {
-          setStatus('incoming', 'On the way.', 'Your magician is headed to your table');
+          setStatus('incoming', T('incomingTitle'), T('incomingSub'));
           var onMyWayAt = data.onMyWayAt ? data.onMyWayAt.toMillis() : Date.now();
           scheduleTransition(onMyWayAt, data.timerMins);
           return;
         }
 
         var pos = data.queuePosition || 1;
-        if (pos <= 1)      setStatus('next',    "You're next.",   'The magician will be with you shortly');
-        else if (pos === 2) setStatus('soon',   'Almost time.',   'One table ahead of you');
-        else                setStatus('waiting', "You're on the list.", (pos - 1) + ' table' + (pos > 2 ? 's' : '') + ' ahead of you');
+        if (pos <= 1)      setStatus('next',    T('nextTitle'), T('nextSub'));
+        else if (pos === 2) setStatus('soon',   T('soonTitle'), T('soonSub'));
+        else                setStatus('waiting', T('waitingTitle'), T('waitingSub').replace(/\{n\}/g, String(pos - 1)));
       });
     }
 
@@ -406,7 +443,7 @@
           showScreen('screen-queue');
           snap.ref.get().then(function(fresh) {
             var d = fresh.data();
-            setStatus('incoming', 'On the way.', 'Your magician is headed to your table');
+            setStatus('incoming', T('incomingTitle'), T('incomingSub'));
             var onMyWayAt = d.onMyWayAt ? d.onMyWayAt.toMillis() : Date.now();
             scheduleTransition(onMyWayAt, d.timerMins);
             listenForUpdates();
@@ -415,7 +452,7 @@
           // A brand new arrival, and the magician isn't currently taking requests.
           // Anyone already mid-visit (handled above) is never affected by this.
           showError();
-          document.getElementById('error-screen').textContent = "The magician isn't performing here right now.";
+          document.getElementById('error-screen').textContent = T('notPerforming');
         } else {
           showScreen('screen-landing');
         }

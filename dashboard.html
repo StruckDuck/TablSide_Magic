@@ -71,6 +71,7 @@
   .sidebar-nav-item.active { color:#eae9d6; border-left-color:var(--gold); background:rgba(255,255,255,0.06); }
 
   .workspace-content { flex:1; min-width:0; padding:2.25rem 2.5rem; max-width:820px; }
+  .workspace-content.wide { max-width:1240px; }
   .tab-panel { display:none; }
   .tab-panel.active { display:block; }
   .panel-title { font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:400; color:var(--text); margin-bottom:1.5rem; }
@@ -108,22 +109,19 @@
   .saved-msg.show { opacity:1; }
   .error-msg { text-align:center; font-size:0.62rem; color:var(--red); letter-spacing:0.08em; padding:0.75rem 0 0; line-height:1.6; }
 
-  .appearance-layout { display:flex; align-items:flex-start; gap:2.25rem; }
+  .appearance-layout { display:flex; align-items:flex-start; gap:1.75rem; }
   .appearance-form { flex:1; min-width:0; max-width:560px; }
-  .appearance-preview { width:300px; flex-shrink:0; position:sticky; top:90px; }
+  .appearance-preview { width:486px; flex-shrink:0; position:sticky; top:90px; max-height:calc(100vh - 110px); overflow-y:auto; }
   .preview-label { font-size:0.6rem; font-weight:500; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem; }
-  .preview-tabs { display:flex; gap:1px; margin-bottom:1px; }
-  .preview-tab { flex:1; padding:0.5rem; font-family:'Raleway',sans-serif; font-size:0.58rem; letter-spacing:0.06em; text-transform:uppercase; text-align:center; background:var(--surface2); border:1px solid var(--border); color:var(--muted); cursor:pointer; }
-  .preview-tab.active { background:var(--teal); color:#fff; border-color:var(--teal); }
-  .preview-stage { background:var(--p-bg); border:1px solid var(--border); border-top:none; padding:1.5rem 1rem; display:flex; justify-content:center; }
-  .preview-box { width:100%; display:flex; flex-direction:column; align-items:center; gap:0.9rem; padding:1.4rem 1.1rem; background:var(--p-box); }
+  .preview-stage { flex:1; background:var(--p-bg); border:1px solid var(--border); padding:0.9rem 0.7rem; display:flex; align-items:center; justify-content:center; }
+  .preview-box { width:100%; display:flex; flex-direction:column; align-items:center; gap:0.7rem; padding:1rem 0.8rem; background:var(--p-box); }
   .preview-rule { width:100%; display:flex; align-items:center; gap:0.5rem; }
   .preview-rule-line { flex:1; height:1px; background:rgba(255,255,255,0.12); }
   .preview-rule-dot { width:4px; height:4px; flex-shrink:0; background:var(--p-highlight); transform:rotate(45deg); }
   .preview-logo { height:28px; max-width:75%; object-fit:contain; }
-  .preview-headline { font-family:var(--p-font-display); font-size:0.95rem; font-weight:300; color:var(--p-text); text-align:center; line-height:1.3; }
+  .preview-headline { font-family:var(--p-font-display); font-size:0.95rem; font-weight:300; color:var(--p-text); text-align:center; line-height:1.3; white-space:pre-line; }
   .preview-after-headline { font-family:var(--p-font-display); font-size:0.85rem; font-style:italic; font-weight:300; color:var(--p-text); text-align:center; }
-  .preview-sub { font-size:0.53rem; font-family:var(--p-font-body); color:var(--p-muted); text-align:center; letter-spacing:0.04em; text-transform:uppercase; line-height:1.6; }
+  .preview-sub { font-size:0.53rem; font-family:var(--p-font-body); color:var(--p-muted); text-align:center; letter-spacing:0.04em; text-transform:uppercase; line-height:1.6; white-space:pre-line; }
   .preview-btn { width:100%; padding:0.6rem; text-align:center; box-sizing:border-box; border:1px solid var(--p-highlight); color:var(--p-highlight); font-family:var(--p-font-body); font-size:0.55rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; }
   .preview-status { width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.2); padding:0.9rem; display:flex; flex-direction:column; align-items:center; gap:0.35rem; }
   .preview-ring { width:26px; height:26px; border-radius:50%; border:1px solid var(--p-highlight); display:flex; align-items:center; justify-content:center; }
@@ -136,6 +134,31 @@
   .preview-link-row { display:flex; justify-content:space-between; padding:0.45rem 0.7rem; border-bottom:1px solid rgba(255,255,255,0.07); font-size:0.5rem; font-family:var(--p-font-body); letter-spacing:0.05em; text-transform:uppercase; color:var(--p-muted); }
   .preview-link-row:last-child { border-bottom:none; }
   .preview-footer { font-family:var(--p-font-display); font-size:0.48rem; color:var(--p-muted); letter-spacing:0.08em; text-transform:uppercase; }
+  .preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .preview-cell { display:flex; flex-direction:column; min-width:0; }
+  .preview-cell-label { font-size:0.56rem; font-weight:500; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.3rem; }
+  .preview-input { width:34px; height:34px; border:1px solid rgba(255,255,255,0.18); background:rgba(0,0,0,0.25); }
+  .preview-state-chips { display:flex; gap:3px; margin-top:4px; }
+  .preview-chip { flex:1; padding:0.3rem 0; font-size:0.5rem; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; text-align:center; background:var(--surface2); border:1px solid var(--border); color:var(--muted); cursor:pointer; }
+  .preview-chip.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+  @media (max-width:1240px) {
+    .appearance-layout { flex-direction:column-reverse; align-items:stretch; }
+    .appearance-preview { width:100%; max-width:486px; position:static; max-height:none; overflow:visible; }
+    .appearance-form { max-width:none; }
+  }
+
+  .tx-group { border-top:1px solid var(--border); }
+  .tx-group:first-child { border-top:none; }
+  .tx-group summary { cursor:pointer; padding:0.75rem 0; font-size:0.64rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--text); list-style:none; }
+  .tx-group summary::-webkit-details-marker { display:none; }
+  .tx-group summary::before { content:'+'; display:inline-block; width:1.1rem; color:var(--muted); }
+  .tx-group[open] summary::before { content:'\2212'; }
+  .tx-field { margin-bottom:0.8rem; }
+  .tx-field-head { display:flex; justify-content:space-between; align-items:baseline; gap:0.5rem; margin-bottom:0.25rem; }
+  .tx-field-head label { font-size:0.58rem; color:var(--muted); letter-spacing:0.07em; text-transform:uppercase; line-height:1.5; }
+  .tx-reset { background:none; border:none; color:var(--gold); font-family:'Raleway',sans-serif; font-size:0.56rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; visibility:hidden; flex-shrink:0; }
+  .tx-reset.show { visibility:visible; }
+  .tx-field textarea.short-input { resize:vertical; font-family:'Raleway',sans-serif; line-height:1.5; }
 
   .stats-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:1rem; max-width:560px; }
   .stats-tab { flex:1; padding:0.6rem; font-size:0.62rem; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; text-align:center; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
@@ -274,6 +297,10 @@
               <div id="link-list" style="margin-bottom:0.6rem;"></div>
               <button type="button" class="venue-btn" id="add-link-btn">+ Add link</button>
             </div>
+            <div class="panel-block">
+              <div class="form-label">Text <span style="text-transform:none;letter-spacing:0;">(leave a field blank to use the default wording)</span></div>
+              <div id="text-groups"></div>
+            </div>
             <div class="error-msg" id="config-error" style="display:none;"></div>
             <button class="btn btn-solid" id="save-config-btn">Save Appearance</button>
             <div class="saved-msg" id="config-saved" style="text-align:left;">Appearance saved</div>
@@ -281,13 +308,29 @@
 
           <div class="appearance-preview">
             <div class="preview-label">Guest preview <span style="text-transform:none;letter-spacing:0;">(not interactive)</span></div>
-            <div class="preview-tabs">
-              <div class="preview-tab active" data-screen="landing">Request</div>
-              <div class="preview-tab" data-screen="queue">Queue</div>
-              <div class="preview-tab" data-screen="after">After</div>
-            </div>
-            <div class="preview-stage">
-              <div class="preview-box" id="preview-box"></div>
+            <div class="preview-grid" id="preview-grid">
+              <div class="preview-cell">
+                <div class="preview-cell-label">Entry</div>
+                <div class="preview-stage"><div class="preview-box" id="preview-box-entry"></div></div>
+              </div>
+              <div class="preview-cell">
+                <div class="preview-cell-label">Request</div>
+                <div class="preview-stage"><div class="preview-box" id="preview-box-request"></div></div>
+              </div>
+              <div class="preview-cell">
+                <div class="preview-cell-label">Queue</div>
+                <div class="preview-stage"><div class="preview-box" id="preview-box-queue"></div></div>
+                <div class="preview-state-chips" id="preview-queue-chips">
+                  <div class="preview-chip active" data-state="waiting">Waiting</div>
+                  <div class="preview-chip" data-state="soon">Almost</div>
+                  <div class="preview-chip" data-state="next">Next</div>
+                  <div class="preview-chip" data-state="incoming">On the way</div>
+                </div>
+              </div>
+              <div class="preview-cell">
+                <div class="preview-cell-label">After</div>
+                <div class="preview-stage"><div class="preview-box" id="preview-box-after"></div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -585,7 +628,7 @@
     db.collection('venues').where('ownerUid', '==', currentUser.uid).get().then(function(snap) {
       venues = snap.docs.map(function(d) {
         var data = d.data();
-        return { name: data.name, slug: d.id, colors: data.colors || {}, fonts: data.fonts || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], floorPlanDesign: data.floorPlanDesign || null, sessionActive: data.sessionActive === true };
+        return { name: data.name, slug: d.id, colors: data.colors || {}, fonts: data.fonts || {}, texts: data.texts || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], floorPlanDesign: data.floorPlanDesign || null, sessionActive: data.sessionActive === true };
       });
       renderVenueGrid();
       if (afterLoad) afterLoad();
@@ -731,6 +774,7 @@
       updateSignageUI();
     }
     if (tab === 'floorplan') renderFloorplanRows();
+    document.querySelector('.workspace-content').classList.toggle('wide', tab === 'appearance');
   }
 
   function openWorkspace(s) {
@@ -828,19 +872,141 @@
     var fonts = Object.assign({}, DEFAULT_FONTS, v.fonts || {});
     document.getElementById('c-font-display').value = fonts.display;
     document.getElementById('c-font-body').value = fonts.body;
+    fillTextFields(v);
     updateGuestPreview();
   }
 
-  // ─── LIVE GUEST-PAGE PREVIEW (non-functioning — colors, fonts, and links only) ─
-  var previewScreen = 'landing';
+  // ─── EDITABLE GUEST WORDING ─────────────────────────────────────────────────
+  // The defaults here must match the ones built into table.html and enter.html.
+  var TEXT_DEFAULTS = {
+    entryPrompt: 'Enter your table number below.',
+    entryButton: 'Continue',
+    entryError: 'Check the number and try again',
+    notPerforming: "The magician isn't performing here right now.",
+    requestHeadline: 'There is a magician\nin the room tonight.',
+    requestSubtext: "Request a performance for your table,\nand they'll be with you shortly.",
+    requestButton: 'Yes, come to our table',
+    waitingTitle: "You're on the list.",
+    waitingSub: '{n} tables ahead of you',
+    soonTitle: 'Almost time.',
+    soonSub: 'One table ahead of you',
+    nextTitle: "You're next.",
+    nextSub: 'The magician will be with you shortly',
+    incomingTitle: 'On the way.',
+    incomingSub: 'Your magician is headed to your table',
+    cancelLink: 'Never mind, cancel our request',
+    afterHeadline: 'Thank you for having me.',
+    tableUnrecognized: "This table number isn't recognized. Please check with a member of staff."
+  };
+  var TEXT_MAX = 140;
+  var TEXT_GROUPS = [
+    { title: 'Entry page', fields: [
+      { key: 'entryPrompt', label: 'Prompt' },
+      { key: 'entryButton', label: 'Button' },
+      { key: 'entryError', label: 'Wrong number message' },
+      { key: 'notPerforming', label: 'Not performing message (also shown on the request page)' } ] },
+    { title: 'Request page', fields: [
+      { key: 'requestHeadline', label: 'Headline', multiline: true },
+      { key: 'requestSubtext', label: 'Subtext', multiline: true },
+      { key: 'requestButton', label: 'Button' } ] },
+    { title: 'Queue page', fields: [
+      { key: 'waitingTitle', label: 'On the list: title', state: 'waiting' },
+      { key: 'waitingSub', label: 'On the list: subline (use {n} for tables ahead)', state: 'waiting' },
+      { key: 'soonTitle', label: 'Almost time: title', state: 'soon' },
+      { key: 'soonSub', label: 'Almost time: subline', state: 'soon' },
+      { key: 'nextTitle', label: "You're next: title", state: 'next' },
+      { key: 'nextSub', label: "You're next: subline", state: 'next' },
+      { key: 'incomingTitle', label: 'On the way: title', state: 'incoming' },
+      { key: 'incomingSub', label: 'On the way: subline', state: 'incoming' },
+      { key: 'cancelLink', label: 'Cancel link' } ] },
+    { title: 'Thank-you page', fields: [ { key: 'afterHeadline', label: 'Thank-you line' } ] },
+    { title: 'Messages', fields: [ { key: 'tableUnrecognized', label: 'Table not recognized' } ] }
+  ];
 
-  document.querySelectorAll('.preview-tab').forEach(function(tab) {
-    tab.addEventListener('click', function() {
-      document.querySelectorAll('.preview-tab').forEach(function(t) { t.classList.remove('active'); });
-      tab.classList.add('active');
-      previewScreen = tab.dataset.screen;
-      updateGuestPreview();
+  function renderTextFields() {
+    var host = document.getElementById('text-groups');
+    TEXT_GROUPS.forEach(function(g) {
+      var details = document.createElement('details');
+      details.className = 'tx-group';
+      var summary = document.createElement('summary');
+      summary.textContent = g.title;
+      details.appendChild(summary);
+      g.fields.forEach(function(f) {
+        var wrap = document.createElement('div'); wrap.className = 'tx-field';
+        var head = document.createElement('div'); head.className = 'tx-field-head';
+        var label = document.createElement('label'); label.textContent = f.label; label.setAttribute('for', 'tx-' + f.key);
+        var reset = document.createElement('button'); reset.type = 'button'; reset.className = 'tx-reset'; reset.textContent = 'Reset'; reset.dataset.key = f.key;
+        head.appendChild(label); head.appendChild(reset);
+        var input = document.createElement(f.multiline ? 'textarea' : 'input');
+        if (f.multiline) input.rows = 2; else input.type = 'text';
+        input.id = 'tx-' + f.key; input.className = 'short-input'; input.maxLength = TEXT_MAX;
+        input.placeholder = TEXT_DEFAULTS[f.key];
+        input.dataset.key = f.key;
+        if (f.state) input.dataset.state = f.state;
+        wrap.appendChild(head); wrap.appendChild(input);
+        details.appendChild(wrap);
+      });
+      host.appendChild(details);
     });
+  }
+  renderTextFields();
+
+  function syncResetVisibility(el) {
+    el.parentNode.querySelector('.tx-reset').classList.toggle('show', el.value.trim() !== '');
+  }
+  function fillTextFields(v) {
+    var texts = (v && v.texts) || {};
+    Object.keys(TEXT_DEFAULTS).forEach(function(key) {
+      var el = document.getElementById('tx-' + key);
+      el.value = typeof texts[key] === 'string' ? texts[key] : '';
+      syncResetVisibility(el);
+    });
+  }
+  // What a guest would see for this line right now: the field if it has text, else the default.
+  function previewText(key) {
+    var el = document.getElementById('tx-' + key);
+    var val = el ? el.value.trim() : '';
+    return val ? val : TEXT_DEFAULTS[key];
+  }
+  // Only lines that differ from the default are saved, so untouched ones keep following the defaults.
+  function collectTexts() {
+    var out = {};
+    Object.keys(TEXT_DEFAULTS).forEach(function(key) {
+      var val = document.getElementById('tx-' + key).value.trim();
+      if (val && val !== TEXT_DEFAULTS[key]) out[key] = val;
+    });
+    return out;
+  }
+
+  var textHost = document.getElementById('text-groups');
+  textHost.addEventListener('input', function(e) {
+    if (e.target.dataset && e.target.dataset.key) { syncResetVisibility(e.target); updateGuestPreview(); }
+  });
+  textHost.addEventListener('focusin', function(e) {
+    var st = e.target.dataset && e.target.dataset.state;
+    if (st) setPreviewQueueState(st);
+  });
+  textHost.addEventListener('click', function(e) {
+    var btn = e.target.closest('.tx-reset');
+    if (!btn) return;
+    var el = document.getElementById('tx-' + btn.dataset.key);
+    el.value = '';
+    syncResetVisibility(el);
+    updateGuestPreview();
+  });
+
+  // ─── LIVE GUEST-PAGE PREVIEW (non-functioning: colors, fonts, links, and wording) ─
+  var previewQueueState = 'waiting';
+  function setPreviewQueueState(st) {
+    previewQueueState = st;
+    document.querySelectorAll('#preview-queue-chips .preview-chip').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.state === st);
+    });
+    updateGuestPreview();
+  }
+  document.getElementById('preview-queue-chips').addEventListener('click', function(e) {
+    var chip = e.target.closest('.preview-chip');
+    if (chip) setPreviewQueueState(chip.dataset.state);
   });
 
   // Refresh on every relevant edit: fonts and the link rows (colors are wired
@@ -856,7 +1022,6 @@
     var links = [];
     rows.forEach(function(row) {
       var label = row.querySelector('.link-label').value.trim();
-      var url = row.querySelector('.link-url').value.trim();
       var screens = Array.prototype.slice.call(row.querySelectorAll('.link-screen:checked')).map(function(c) { return c.value; });
       if (label && screens.indexOf(screen) > -1) links.push(label);
     });
@@ -889,47 +1054,58 @@
     return (!previewHasLogo() && name) ? '<div class="preview-footer">' + escapeHtml(name) + '</div>' : '';
   }
 
+  // The entry page has no logo, footer, or links, just the prompt, the number box, and the button.
+  function buildEntryPreview() {
+    return previewRule() +
+      '<div class="preview-sub">' + escapeHtml(previewText('entryPrompt')) + '</div>' +
+      '<div class="preview-input"></div>' +
+      '<div class="preview-btn">' + escapeHtml(previewText('entryButton')) + '</div>' +
+      previewRule();
+  }
+
   function buildLandingPreview() {
     return previewLogoOrName() + previewRule() +
-      '<div class="preview-headline">There is a magician<br>in the room tonight.</div>' +
-      '<div class="preview-sub">Request a performance for your table.</div>' +
-      '<div class="preview-btn">Yes &mdash; come to our table</div>' +
+      '<div class="preview-headline">' + escapeHtml(previewText('requestHeadline')) + '</div>' +
+      '<div class="preview-sub">' + escapeHtml(previewText('requestSubtext')) + '</div>' +
+      '<div class="preview-btn">' + escapeHtml(previewText('requestButton')) + '</div>' +
       previewRule() + previewLinksHtml('landing') + previewFooterName();
   }
 
   function buildQueuePreview() {
+    var st = previewQueueState;
+    var sub = previewText(st + 'Sub').replace(/\{n\}/g, '3'); // sample: 3 tables ahead
     return previewLogoOrName() + previewRule() +
       '<div class="preview-status">' +
         '<div class="preview-ring"><div class="preview-dot"></div></div>' +
-        '<div class="preview-status-label">You\'re on the list.</div>' +
-        '<div class="preview-status-sub">The magician will be with you soon</div>' +
+        '<div class="preview-status-label">' + escapeHtml(previewText(st + 'Title')) + '</div>' +
+        '<div class="preview-status-sub">' + escapeHtml(sub) + '</div>' +
       '</div>' +
-      '<div class="preview-cancel">Never mind &mdash; cancel our request</div>' +
+      '<div class="preview-cancel">' + escapeHtml(previewText('cancelLink')) + '</div>' +
       previewRule() + previewLinksHtml('queue') + previewFooterName();
   }
 
   function buildAfterPreview() {
     return previewLogoOrName() + previewRule() +
-      '<div class="preview-after-headline">Thank you for having me.</div>' +
+      '<div class="preview-after-headline">' + escapeHtml(previewText('afterHeadline')) + '</div>' +
       previewLinksHtml('after') + previewFooterName();
   }
 
   function updateGuestPreview() {
-    var stage = document.querySelector('.preview-stage');
-    stage.style.setProperty('--p-bg', document.getElementById('c-bg-h').value);
-    stage.style.setProperty('--p-box', document.getElementById('c-box-h').value);
-    stage.style.setProperty('--p-highlight', document.getElementById('c-highlight-h').value);
-    stage.style.setProperty('--p-text', document.getElementById('c-text-h').value);
-    stage.style.setProperty('--p-muted', document.getElementById('c-muted-h').value);
+    var grid = document.getElementById('preview-grid');
+    grid.style.setProperty('--p-bg', document.getElementById('c-bg-h').value);
+    grid.style.setProperty('--p-box', document.getElementById('c-box-h').value);
+    grid.style.setProperty('--p-highlight', document.getElementById('c-highlight-h').value);
+    grid.style.setProperty('--p-text', document.getElementById('c-text-h').value);
+    grid.style.setProperty('--p-muted', document.getElementById('c-muted-h').value);
     var displayFont = document.getElementById('c-font-display').value;
     var bodyFont = document.getElementById('c-font-body').value;
-    stage.style.setProperty('--p-font-display', FONT_STACKS[displayFont] || FONT_STACKS[DEFAULT_FONTS.display]);
-    stage.style.setProperty('--p-font-body', FONT_STACKS[bodyFont] || FONT_STACKS[DEFAULT_FONTS.body]);
+    grid.style.setProperty('--p-font-display', FONT_STACKS[displayFont] || FONT_STACKS[DEFAULT_FONTS.display]);
+    grid.style.setProperty('--p-font-body', FONT_STACKS[bodyFont] || FONT_STACKS[DEFAULT_FONTS.body]);
 
-    var box = document.getElementById('preview-box');
-    if (previewScreen === 'landing') box.innerHTML = buildLandingPreview();
-    else if (previewScreen === 'queue') box.innerHTML = buildQueuePreview();
-    else box.innerHTML = buildAfterPreview();
+    document.getElementById('preview-box-entry').innerHTML = buildEntryPreview();
+    document.getElementById('preview-box-request').innerHTML = buildLandingPreview();
+    document.getElementById('preview-box-queue').innerHTML = buildQueuePreview();
+    document.getElementById('preview-box-after').innerHTML = buildAfterPreview();
   }
 
   document.getElementById('save-config-btn').addEventListener('click', function() {
@@ -948,8 +1124,10 @@
       body: document.getElementById('c-font-body').value
     };
 
-    db.collection('venues').doc(workspaceSlug).update({ colors: colors, fonts: fonts, links: result.links }).then(function() {
-      v.colors = colors; v.fonts = fonts; v.links = result.links;
+    var texts = collectTexts();
+
+    db.collection('venues').doc(workspaceSlug).update({ colors: colors, fonts: fonts, texts: texts, links: result.links }).then(function() {
+      v.colors = colors; v.fonts = fonts; v.texts = texts; v.links = result.links;
       showSaved('config-saved');
       renderOverview(v);
       renderVenueGrid();
