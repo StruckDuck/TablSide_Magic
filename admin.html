@@ -29,8 +29,9 @@
   .header-title { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:400; color:var(--teal); letter-spacing:0.15em; text-transform:uppercase; }
 
   /* MAP */
-  .map-container { width:100%; background:var(--surface2); border:1px solid var(--border); min-height:80px; position:relative; overflow:hidden; margin-bottom:1.25rem; cursor:pointer; touch-action:pan-y; }
-  .map-container img { width:100%; height:auto; display:block; max-height:40vh; max-height:40dvh; object-fit:contain; }
+  .map-container { width:100%; background:var(--surface2); border:1px solid var(--border); min-height:80px; position:relative; overflow:hidden; margin-bottom:1.25rem; cursor:pointer; }
+  .map-container.swipeable { touch-action:pan-y; }
+  .map-container img { display:block; width:100%; height:100%; object-fit:contain; -webkit-user-drag:none; }
   .map-placeholder { display:flex; align-items:center; justify-content:center; min-height:80px; padding:2rem; }
   .map-placeholder-text { font-size:0.68rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; text-align:center; }
   .map-change-btn { position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; padding:4px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -104,11 +105,14 @@
   .link-click-row { display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.7rem; color:var(--text); }
   .link-click-row:last-child { border-bottom:none; }
   .link-click-row .count { color:var(--muted); font-weight:500; }
-  .map-viewer { position:relative; width:100%; }
-  .map-nav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,0.45); color:#fff; border:none; width:32px; height:32px; font-size:1rem; cursor:pointer; z-index:2; }
-  .map-nav.prev { left:0.5rem; } .map-nav.next { right:0.5rem; }
-  .map-dots { position:absolute; bottom:0.5rem; left:0; right:0; display:flex; justify-content:center; gap:5px; z-index:2; }
-  .map-dots .dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.5); }
+  .map-viewer { position:relative; width:100%; max-height:40vh; max-height:40dvh; overflow:hidden; user-select:none; -webkit-user-select:none; }
+  .map-track { position:absolute; top:0; bottom:0; left:0; width:100%; display:flex; }
+  .map-track.multi { width:300%; transform:translateX(-33.333333%); will-change:transform; }
+  .map-slide { flex:0 0 100%; min-width:0; height:100%; }
+  .map-track.multi .map-slide { flex-basis:33.333333%; }
+  .map-dots { position:absolute; left:50%; bottom:0.4rem; transform:translateX(-50%); display:flex; padding:0 0.3rem; border-radius:999px; background:rgba(0,0,0,0.5); z-index:2; }
+  .dot-hit { width:24px; height:24px; padding:0; border:none; background:none; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .map-dots .dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.55); }
   .map-dots .dot.active { background:#fff; }
   .map-caption { display:flex; justify-content:space-between; gap:0.75rem; padding:0.45rem 0.7rem; background:var(--surface); border-top:1px solid var(--border); font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
   .map-caption-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -428,29 +432,60 @@
 
   // ─── VENUES ─────────────────────────────────────────────────────────────────
   document.getElementById('map-container').addEventListener('click', function(e) {
-    var nav = e.target.closest('.map-nav');
-    if (nav) { e.stopPropagation(); stepMap(parseInt(nav.dataset.dir)); return; }
-    var dot = e.target.closest('.dot');
-    if (dot) { e.stopPropagation(); activeMapIndex = parseInt(dot.dataset.index); renderMapViewer(); return; }
+    var hit = e.target.closest('.dot-hit');
+    if (hit) { e.stopPropagation(); goTo(parseInt(hit.dataset.index)); return; }
     if (!settings.activeVenue) window.location.href = 'dashboard.html';
   });
 
-  // Swipe sideways on the plan to change rooms. Small drags and mostly-vertical
-  // drags (scrolling the page) are ignored.
+  // Drag the plan sideways to change rooms. It follows your finger (or mouse) and the
+  // neighbouring room slides in beside it. Past a quarter of the width, or with a quick
+  // flick, it carries on to that room; otherwise it springs back. Vertical drags are left
+  // alone so the page still scrolls.
   (function() {
     var box = document.getElementById('map-container');
-    var start = null;
-    box.addEventListener('touchstart', function(e) {
-      start = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
-    }, { passive: true });
-    box.addEventListener('touchend', function(e) {
-      if (!start || !e.changedTouches.length) return;
-      var dx = e.changedTouches[0].clientX - start.x;
-      var dy = e.changedTouches[0].clientY - start.y;
-      start = null;
-      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) stepMap(dx < 0 ? 1 : -1);
-    }, { passive: true });
-    box.addEventListener('touchcancel', function() { start = null; }, { passive: true });
+    function offset(dx) { return 'translateX(calc(-33.333333% + ' + dx + 'px))'; }
+
+    box.addEventListener('pointerdown', function(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.target.closest('.dot-hit') || !trackEl()) return;
+      settleNow();                       // grabbing the plan mid-slide lets that slide finish first
+      if (!trackEl()) return;
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: null, dx: 0,
+               w: box.querySelector('.map-viewer').clientWidth, pts: [{ t: e.timeStamp, x: e.clientX }] };
+    });
+    box.addEventListener('pointermove', function(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.axis) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dy) >= Math.abs(dx)) { drag = null; return; } // scrolling the page, not swiping
+        drag.axis = 'x';
+        try { box.setPointerCapture(e.pointerId); } catch (err) {}
+        trackEl().style.transition = 'none';
+      }
+      drag.dx = Math.max(-drag.w, Math.min(drag.w, dx));
+      drag.pts.push({ t: e.timeStamp, x: e.clientX });
+      while (drag.pts.length > 2 && e.timeStamp - drag.pts[0].t > 100) drag.pts.shift();
+      trackEl().style.transform = offset(drag.dx);
+    });
+    function release(e, cancelled) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null;
+      if (d.axis !== 'x') { flushPending(); return; }
+      try { box.releasePointerCapture(e.pointerId); } catch (err) {}
+      var first = d.pts[0], last = d.pts[d.pts.length - 1];
+      var v = last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0; // pixels per millisecond
+      var flick = Math.abs(v) > 0.45 && Math.abs(d.dx) > 24 && (v < 0) === (d.dx < 0);
+      var n = currentRooms().length;
+      if (!cancelled && n > 1 && d.dx !== 0 && (Math.abs(d.dx) > d.w * 0.25 || flick)) {
+        var dir = d.dx < 0 ? 1 : -1;
+        slideTo(dir, (activeMapIndex + dir + n) % n);
+      } else {
+        springBack();
+      }
+    }
+    box.addEventListener('pointerup', function(e) { release(e, false); });
+    box.addEventListener('pointercancel', function(e) { release(e, true); });
   })();
 
   document.getElementById('venue-switcher').addEventListener('change', function() {
@@ -464,6 +499,7 @@
     var v = venues.find(function(v) { return v.slug === s; });
     if (v) {
       activeMapIndex = 0;
+      pendingRender = false; pendingTarget = null;
       renderMapViewer();
       ensureRooms(v);
       updateSessionUI();
@@ -473,10 +509,18 @@
 
   // Floor plans live in each venue's rooms. A venue that hasn't been opened in
   // the dashboard since rooms were introduced still shows its old photos (no names).
+  var ASPECT_RATIOS = { '2:1': 2, '16:9': 16 / 9, '3:2': 1.5, '4:3': 4 / 3 };
   function floorPlanRooms(v) {
     if (!v) return [];
     if (v.roomsLoaded && v.rooms && v.rooms.length) return v.rooms;
-    return (v.mapUrls || []).map(function(u) { return { name: '', url: u, tables: [] }; });
+    if (!v.legacyRooms) {
+      v.legacyRooms = (v.mapUrls || []).map(function(u) { return { name: '', url: u, tables: [], ratio: null }; });
+      v.legacyRooms.forEach(function(r) { measureRoom(v, r); });
+    }
+    return v.legacyRooms;
+  }
+  function currentRooms() {
+    return floorPlanRooms(venues.find(function(v) { return v.slug === settings.activeVenue; }));
   }
   function escText(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function escAttr(s) { return escText(s).replace(/"/g, '&quot;'); }
@@ -490,44 +534,141 @@
         return {
           name: r.name || '',
           url: r.imageUrl,
-          tables: ((r.design && r.design.numbers) || []).map(function(n) { return String(n.value); })
+          tables: ((r.design && r.design.numbers) || []).map(function(n) { return String(n.value); }),
+          ratio: ASPECT_RATIOS[r.design && r.design.aspect] || null
         };
       }).filter(function(r) { return r.url; });
+      v.rooms.forEach(function(r) { measureRoom(v, r); });
     }).catch(function() {
       v.rooms = [];
     }).then(function() {
       v.roomsLoaded = true; v.roomsLoading = false;
-      if (settings.activeVenue === v.slug) { renderMapViewer(); lastFocusKey = null; followFocus(); }
+      if (settings.activeVenue === v.slug) { renderMapViewer(); lastFocusKey = null; followFocus(true); }
     });
   }
 
+  // One frame per venue, as tall as its tallest room, so the queue below never moves
+  // as you change rooms. Shorter plans sit centred inside it.
+  function frameRatio(rooms) {
+    var known = rooms.map(function(r) { return r.ratio; }).filter(Boolean);
+    return known.length ? Math.min.apply(null, known) : 16 / 9;
+  }
+  // The picture itself is the truth about its shape, so measure it once it has loaded.
+  function measureRoom(v, room) {
+    var im = new Image();
+    im.onload = function() {
+      if (!im.naturalWidth || !im.naturalHeight) return;
+      var before = frameRatio(floorPlanRooms(v));
+      room.ratio = im.naturalWidth / im.naturalHeight;
+      if (frameRatio(floorPlanRooms(v)) === before || settings.activeVenue !== v.slug) return;
+      if (anim || drag) { pendingRender = true; return; }
+      renderMapViewer();
+    };
+    im.src = room.url;
+  }
+
+  function slideHtml(room, isCurrent) {
+    return '<div class="map-slide' + (isCurrent ? ' current' : '') + '"><img src="' + escAttr(room.url) + '" alt="' +
+      escAttr(room.name || 'Floor plan') + '" draggable="false"></div>';
+  }
   function renderMapViewer() {
+    cancelSlide();
     var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
     var rooms = floorPlanRooms(v);
     if (!rooms.length) { setMapPlaceholder(v && v.roomsLoaded ? 'No floor plan for this venue' : ''); return; }
     if (activeMapIndex >= rooms.length) activeMapIndex = 0;
-    var room = rooms[activeMapIndex];
-    var nav = rooms.length > 1
-      ? '<button type="button" class="map-nav prev" data-dir="-1">‹</button>' +
-        '<button type="button" class="map-nav next" data-dir="1">›</button>' +
-        '<div class="map-dots">' + rooms.map(function(r, i) {
-          return '<span class="dot' + (i === activeMapIndex ? ' active' : '') + '" data-index="' + i + '"></span>';
+    var n = rooms.length, cur = rooms[activeMapIndex];
+    // With several rooms the track holds the previous, current and next plan side by side.
+    var slides = n > 1 ? [rooms[(activeMapIndex + n - 1) % n], cur, rooms[(activeMapIndex + 1) % n]] : [cur];
+    var dots = n > 1
+      ? '<div class="map-dots">' + rooms.map(function(r, i) {
+          return '<button type="button" class="dot-hit" data-index="' + i + '" aria-label="' + escAttr(r.name || ('Room ' + (i + 1))) + '">' +
+            '<span class="dot' + (i === activeMapIndex ? ' active' : '') + '"></span></button>';
         }).join('') + '</div>'
       : '';
     // The name is only worth showing when there's more than one room to tell apart.
-    var caption = (rooms.length > 1 && room.name)
-      ? '<div class="map-caption"><span class="map-caption-name">' + escText(room.name) + '</span><span>' + (activeMapIndex + 1) + ' of ' + rooms.length + '</span></div>'
+    var caption = (n > 1 && cur.name)
+      ? '<div class="map-caption"><span class="map-caption-name">' + escText(cur.name) + '</span><span class="map-caption-count">' + (activeMapIndex + 1) + ' of ' + n + '</span></div>'
       : '';
+    document.getElementById('map-container').classList.toggle('swipeable', n > 1);
     document.getElementById('map-container').innerHTML =
-      '<div class="map-viewer"><img src="' + escAttr(room.url) + '" alt="' + escAttr(room.name || 'Floor plan') + '">' + nav + '</div>' + caption;
+      '<div class="map-viewer" style="aspect-ratio:' + frameRatio(rooms).toFixed(4) + '">' +
+        '<div class="map-track' + (n > 1 ? ' multi' : '') + '">' +
+          slides.map(function(r, i) { return slideHtml(r, n > 1 ? i === 1 : true); }).join('') +
+        '</div>' + dots + '</div>' + caption;
   }
 
-  function stepMap(dir) {
-    var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
-    var rooms = floorPlanRooms(v);
-    if (rooms.length < 2) return;
-    activeMapIndex = (activeMapIndex + dir + rooms.length) % rooms.length;
-    renderMapViewer();
+  // ─── Sliding between rooms ─────────────────────────────────────────────────
+  var SLIDE_MS = 250;
+  var anim = null;            // a slide that's still settling
+  var drag = null;            // a finger (or mouse) that's down on the plan
+  var pendingRender = false;  // something wanted a redraw while the plan was moving
+  var pendingTarget = null;   // something wanted a different room while the plan was moving
+  function trackEl() { return document.querySelector('#map-container .map-track.multi'); }
+  function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  function slideMs() { return reducedMotion() ? 0 : SLIDE_MS; }
+  function cancelSlide() { if (anim) { clearTimeout(anim.timer); anim = null; } }
+  function settleNow() { if (anim) anim.finish(); } // jump straight to where the slide was heading
+
+  function showIndicators(index) {
+    var rooms = currentRooms();
+    var cap = document.querySelector('#map-container .map-caption');
+    if (cap && rooms[index]) {
+      cap.querySelector('.map-caption-name').textContent = rooms[index].name;
+      cap.querySelector('.map-caption-count').textContent = (index + 1) + ' of ' + rooms.length;
+    }
+    document.querySelectorAll('#map-container .dot').forEach(function(d, i) { d.classList.toggle('active', i === index); });
+  }
+  function flushPending() {
+    if (anim || drag) return;
+    if (pendingRender) { pendingRender = false; renderMapViewer(); }
+    if (pendingTarget != null) { var t = pendingTarget; pendingTarget = null; goTo(t); }
+  }
+  // Animate the track to a resting spot, then run done().
+  function settleTrack(toTransform, done) {
+    var track = trackEl();
+    track.style.transition = 'transform ' + slideMs() + 'ms cubic-bezier(0.22, 0.7, 0.25, 1)';
+    track.style.transform = toTransform;
+    var finished = false;
+    function finish() {
+      if (finished) return;
+      finished = true;
+      clearTimeout(a.timer);
+      track.removeEventListener('transitionend', onEnd);
+      anim = null;
+      done();
+      flushPending();
+    }
+    function onEnd(e) { if (e.target === track && e.propertyName === 'transform') finish(); }
+    var a = anim = { timer: setTimeout(finish, slideMs() + 80), finish: finish };
+    track.addEventListener('transitionend', onEnd);
+  }
+  function slideTo(dir, target) {
+    showIndicators(target);
+    settleTrack(dir > 0 ? 'translateX(-66.666667%)' : 'translateX(0)', function() {
+      activeMapIndex = target;
+      renderMapViewer();
+    });
+  }
+  function springBack() {
+    settleTrack('translateX(-33.333333%)', function() {
+      var track = trackEl();
+      if (track) { track.style.transition = 'none'; track.style.transform = 'translateX(-33.333333%)'; }
+    });
+  }
+  // Slide to a room: from a dot, or because the plan is following the queue.
+  function goTo(target, instant) {
+    var rooms = currentRooms();
+    if (target < 0 || target >= rooms.length) return;
+    if (drag && drag.axis === 'x') { pendingTarget = target; return; } // never move the plan under a finger
+    settleNow();
+    if (target === activeMapIndex) return;
+    var track = trackEl();
+    if (instant || reducedMotion() || !track) { activeMapIndex = target; renderMapViewer(); return; }
+    var dir = target > activeMapIndex ? 1 : -1;
+    // the new room arrives from the side it's heading to, even when it isn't the neighbouring one
+    track.children[dir > 0 ? 2 : 0].querySelector('img').src = rooms[target].url;
+    slideTo(dir, target);
   }
 
   // The plan follows the table you're dealing with: the one you're heading to,
@@ -535,25 +676,25 @@
   // swiping over to look at another room is never undone behind your back.
   var queueTop = null, headingToTable = null, lastFocusKey = null;
   function roomIndexForTable(table) {
-    var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
-    var rooms = floorPlanRooms(v);
+    var rooms = currentRooms();
     for (var i = 0; i < rooms.length; i++) {
       if (rooms[i].tables.indexOf(String(table)) > -1) return i;
     }
     return -1;
   }
-  function followFocus() {
+  function followFocus(instant) {
     var key = headingToTable != null ? 'h:' + headingToTable : (queueTop ? 'q:' + queueTop.id : '');
     if (key === lastFocusKey) return;
     lastFocusKey = key;
     var table = headingToTable != null ? headingToTable : (queueTop ? queueTop.table : null);
     if (table == null) return;
     var idx = roomIndexForTable(table);
-    if (idx > -1 && idx !== activeMapIndex) { activeMapIndex = idx; renderMapViewer(); }
+    if (idx > -1 && idx !== activeMapIndex) goTo(idx, instant);
   }
   function setHeadingTable(table) { headingToTable = table; followFocus(); }
 
   function setMapPlaceholder(text) {
+    document.getElementById('map-container').classList.remove('swipeable');
     document.getElementById('map-container').innerHTML =
       '<div class="map-placeholder"><div class="map-placeholder-text">' + text + '</div></div>';
   }
