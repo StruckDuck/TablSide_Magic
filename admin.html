@@ -29,8 +29,8 @@
   .header-title { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:400; color:var(--teal); letter-spacing:0.15em; text-transform:uppercase; }
 
   /* MAP */
-  .map-container { width:100%; background:var(--surface2); border:1px solid var(--border); min-height:80px; position:relative; overflow:hidden; margin-bottom:1.25rem; cursor:pointer; }
-  .map-container img { width:100%; height:auto; display:block; }
+  .map-container { width:100%; background:var(--surface2); border:1px solid var(--border); min-height:80px; position:relative; overflow:hidden; margin-bottom:1.25rem; cursor:pointer; touch-action:pan-y; }
+  .map-container img { width:100%; height:auto; display:block; max-height:40vh; max-height:40dvh; object-fit:contain; }
   .map-placeholder { display:flex; align-items:center; justify-content:center; min-height:80px; padding:2rem; }
   .map-placeholder-text { font-size:0.68rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; text-align:center; }
   .map-change-btn { position:absolute; bottom:8px; right:8px; background:rgba(255,255,255,0.92); border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; padding:4px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -110,6 +110,8 @@
   .map-dots { position:absolute; bottom:0.5rem; left:0; right:0; display:flex; justify-content:center; gap:5px; z-index:2; }
   .map-dots .dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.5); }
   .map-dots .dot.active { background:#fff; }
+  .map-caption { display:flex; justify-content:space-between; gap:0.75rem; padding:0.45rem 0.7rem; background:var(--surface); border-top:1px solid var(--border); font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+  .map-caption-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
   /* MODAL */
   .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center; padding:1rem; }
@@ -356,6 +358,7 @@
       if (remaining === 0) {
         stopCountdown();
         headingToId = null;
+        setHeadingTable(null);
         document.getElementById('heading-bar').style.display = 'none';
         return;
       }
@@ -432,6 +435,24 @@
     if (!settings.activeVenue) window.location.href = 'dashboard.html';
   });
 
+  // Swipe sideways on the plan to change rooms. Small drags and mostly-vertical
+  // drags (scrolling the page) are ignored.
+  (function() {
+    var box = document.getElementById('map-container');
+    var start = null;
+    box.addEventListener('touchstart', function(e) {
+      start = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    }, { passive: true });
+    box.addEventListener('touchend', function(e) {
+      if (!start || !e.changedTouches.length) return;
+      var dx = e.changedTouches[0].clientX - start.x;
+      var dy = e.changedTouches[0].clientY - start.y;
+      start = null;
+      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) stepMap(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    box.addEventListener('touchcancel', function() { start = null; }, { passive: true });
+  })();
+
   document.getElementById('venue-switcher').addEventListener('change', function() {
     if (this.value) selectVenue(this.value);
   });
@@ -451,48 +472,86 @@
   }
 
   // Floor plans live in each venue's rooms. A venue that hasn't been opened in
-  // the dashboard since rooms were introduced still shows its old photos.
-  function floorPlanUrls(v) {
+  // the dashboard since rooms were introduced still shows its old photos (no names).
+  function floorPlanRooms(v) {
     if (!v) return [];
-    if (v.roomsLoaded && v.roomUrls && v.roomUrls.length) return v.roomUrls;
-    return v.mapUrls || [];
+    if (v.roomsLoaded && v.rooms && v.rooms.length) return v.rooms;
+    return (v.mapUrls || []).map(function(u) { return { name: '', url: u, tables: [] }; });
   }
+  function escText(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function escAttr(s) { return escText(s).replace(/"/g, '&quot;'); }
+
   function ensureRooms(v) {
     if (!v || v.roomsLoaded || v.roomsLoading) return;
     v.roomsLoading = true;
     db.collection('venues').doc(v.slug).collection('rooms').orderBy('order').get().then(function(snap) {
-      v.roomUrls = snap.docs.map(function(d) { return d.data().imageUrl; }).filter(Boolean);
+      v.rooms = snap.docs.map(function(d) {
+        var r = d.data();
+        return {
+          name: r.name || '',
+          url: r.imageUrl,
+          tables: ((r.design && r.design.numbers) || []).map(function(n) { return String(n.value); })
+        };
+      }).filter(function(r) { return r.url; });
     }).catch(function() {
-      v.roomUrls = [];
+      v.rooms = [];
     }).then(function() {
       v.roomsLoaded = true; v.roomsLoading = false;
-      if (settings.activeVenue === v.slug) renderMapViewer();
+      if (settings.activeVenue === v.slug) { renderMapViewer(); lastFocusKey = null; followFocus(); }
     });
   }
 
   function renderMapViewer() {
     var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
-    var urls = floorPlanUrls(v);
-    if (!urls.length) { setMapPlaceholder(v && v.roomsLoaded ? 'No floor plan for this venue' : ''); return; }
-    if (activeMapIndex >= urls.length) activeMapIndex = 0;
-    var nav = urls.length > 1
+    var rooms = floorPlanRooms(v);
+    if (!rooms.length) { setMapPlaceholder(v && v.roomsLoaded ? 'No floor plan for this venue' : ''); return; }
+    if (activeMapIndex >= rooms.length) activeMapIndex = 0;
+    var room = rooms[activeMapIndex];
+    var nav = rooms.length > 1
       ? '<button type="button" class="map-nav prev" data-dir="-1">‹</button>' +
         '<button type="button" class="map-nav next" data-dir="1">›</button>' +
-        '<div class="map-dots">' + urls.map(function(u, i) {
+        '<div class="map-dots">' + rooms.map(function(r, i) {
           return '<span class="dot' + (i === activeMapIndex ? ' active' : '') + '" data-index="' + i + '"></span>';
         }).join('') + '</div>'
       : '';
+    // The name is only worth showing when there's more than one room to tell apart.
+    var caption = (rooms.length > 1 && room.name)
+      ? '<div class="map-caption"><span class="map-caption-name">' + escText(room.name) + '</span><span>' + (activeMapIndex + 1) + ' of ' + rooms.length + '</span></div>'
+      : '';
     document.getElementById('map-container').innerHTML =
-      '<div class="map-viewer"><img src="' + urls[activeMapIndex] + '" alt="Floor plan">' + nav + '</div>';
+      '<div class="map-viewer"><img src="' + escAttr(room.url) + '" alt="' + escAttr(room.name || 'Floor plan') + '">' + nav + '</div>' + caption;
   }
 
   function stepMap(dir) {
     var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
-    var urls = floorPlanUrls(v);
-    if (!urls.length) return;
-    activeMapIndex = (activeMapIndex + dir + urls.length) % urls.length;
+    var rooms = floorPlanRooms(v);
+    if (rooms.length < 2) return;
+    activeMapIndex = (activeMapIndex + dir + rooms.length) % rooms.length;
     renderMapViewer();
   }
+
+  // The plan follows the table you're dealing with: the one you're heading to,
+  // otherwise the first request in line. It moves only when that changes, so
+  // swiping over to look at another room is never undone behind your back.
+  var queueTop = null, headingToTable = null, lastFocusKey = null;
+  function roomIndexForTable(table) {
+    var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
+    var rooms = floorPlanRooms(v);
+    for (var i = 0; i < rooms.length; i++) {
+      if (rooms[i].tables.indexOf(String(table)) > -1) return i;
+    }
+    return -1;
+  }
+  function followFocus() {
+    var key = headingToTable != null ? 'h:' + headingToTable : (queueTop ? 'q:' + queueTop.id : '');
+    if (key === lastFocusKey) return;
+    lastFocusKey = key;
+    var table = headingToTable != null ? headingToTable : (queueTop ? queueTop.table : null);
+    if (table == null) return;
+    var idx = roomIndexForTable(table);
+    if (idx > -1 && idx !== activeMapIndex) { activeMapIndex = idx; renderMapViewer(); }
+  }
+  function setHeadingTable(table) { headingToTable = table; followFocus(); }
 
   function setMapPlaceholder(text) {
     document.getElementById('map-container').innerHTML =
@@ -535,6 +594,7 @@
     if (!settings.activeVenue) return;
     if (unsubscribe) unsubscribe();
     entries = [];
+    headingToTable = null; lastFocusKey = null;
     renderQueue();
     unsubscribe = db.collection('venues').doc(settings.activeVenue).collection('tables')
       .onSnapshot(function(snapshot) {
@@ -557,6 +617,7 @@
       if (headingToId === data.id) {
         stopCountdown();
         headingToId = null;
+        setHeadingTable(null);
         document.getElementById('heading-bar').style.display = 'none';
       }
       // Only show cancel notice if the table was actively in the queue
@@ -600,6 +661,7 @@
           document.getElementById('heading-bar').style.display = 'flex';
           document.getElementById('heading-bar-table').textContent = label;
           startCountdown(startedAt, timerMs);
+          setHeadingTable(String(data.table));
         }
       }
 
@@ -640,6 +702,7 @@
     var scans    = entries.filter(function(e) { return e.type === 'scan'; });
     var sorted   = requests.concat(scans);
     var top      = requests[0] || null;
+    queueTop = top; followFocus();
 
     count.textContent = requests.length;
     count.className = 'queue-count' + (requests.length === 0 ? ' empty' : '');
@@ -676,6 +739,7 @@
         var timerMs = TIMER_MINS * 60 * 1000;
 
         headingToId = id;
+        setHeadingTable(id.replace('table_', ''));
 
         // Write to Firebase — diner page reads onMyWayAt and handles its own transition
         db.collection('venues').doc(settings.activeVenue).collection('tables').doc(id)
