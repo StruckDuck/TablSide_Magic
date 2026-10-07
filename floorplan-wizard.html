@@ -32,7 +32,7 @@
   .zoom-row input[type=range] { width:110px; }
 
   .stage-wrap { flex:1; display:flex; align-items:center; justify-content:center; background:#e9e6df; background-image: radial-gradient(#d2cdc2 1px, transparent 1px); background-size:20px 20px; overflow:auto; padding:1rem; min-height:0; }
-  #canvas { background:#fff; border:1px solid var(--border); box-shadow:0 0 0 1px rgba(0,0,0,0.03); cursor:default; max-width:100%; height:auto; }
+  #canvas { background:#fff; border:1px solid var(--border); box-shadow:0 0 0 1px rgba(0,0,0,0.03); cursor:default; max-width:100%; height:auto; flex:none; }
   #canvas.tool-ellipse, #canvas.tool-rect { cursor:crosshair; }
   #canvas.tool-move { cursor:move; }
   #canvas.tool-number { cursor:pointer; }
@@ -311,7 +311,24 @@
       clampImageTransform();
     }
     draw();
+    fitCanvas();
   }
+  // Scale the canvas on screen so the whole shape always fits in the stage, however
+  // tall it is or small the window is. The drawing itself stays 960 wide; only how
+  // big it looks changes, so saved images and exports are not affected.
+  function fitCanvas() {
+    var wrap = document.querySelector('.stage-wrap');
+    var cs = getComputedStyle(wrap);
+    var availW = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var availH = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (!(availW >= 50 && availH >= 50)) return; // the editor isn't on screen yet
+    var scale = Math.min(1, availW / W, availH / H);
+    canvas.style.width = Math.floor(W * scale) + 'px';
+    canvas.style.height = Math.floor(H * scale) + 'px';
+  }
+  window.addEventListener('resize', fitCanvas);
+  if (window.ResizeObserver) new ResizeObserver(fitCanvas).observe(document.querySelector('.stage-wrap'));
+
   document.getElementById('aspect-select').addEventListener('change', function() {
     var next = this.value;
     if ((state.shapes.length || state.numbers.length) &&
@@ -376,6 +393,7 @@
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('resume-photo-screen').style.display = 'none';
     document.getElementById('editor').style.display = 'flex';
+    fitCanvas();
     updateToolAvailability(mode);
     setTool(mode === 'photo' ? 'crop' : 'move');
     draw();
