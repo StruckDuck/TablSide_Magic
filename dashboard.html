@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manage — Tablside</title>
+<title>Manage | TablSide</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -30,6 +30,7 @@
   .header-actions { display:flex; align-items:center; gap:1.25rem; }
   .header-link { font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--cream); opacity:0.75; text-decoration:none; cursor:pointer; background:none; border:none; font-family:'Raleway',sans-serif; }
   .header-link:hover { opacity:1; color:var(--gold); }
+  .header-name { font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--cream); opacity:0.75; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .app-header .btn-outline { border-color:rgba(234,225,215,0.4); color:var(--cream); }
   .app-header .btn-outline:hover { border-color:var(--cream); color:var(--cream); background:rgba(234,225,215,0.1); }
   .btn { font-family:'Raleway',sans-serif; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -52,8 +53,7 @@
   .venue-card-preview { aspect-ratio:4/3; padding:9%; display:flex; }
   .venue-card-box { flex:1; display:flex; align-items:center; justify-content:center; padding:1rem; text-align:center; }
   .venue-card-name { font-family:'Cormorant Garamond',serif; font-size:1.4rem; line-height:1.3; }
-  .venue-card-footer { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.85rem; background:var(--surface); border-top:1px solid var(--border); }
-  .venue-card-id { font-size:0.6rem; color:var(--muted); letter-spacing:0.05em; }
+  .venue-card-footer { display:flex; align-items:center; justify-content:flex-end; padding:0.6rem 0.85rem; background:var(--surface); border-top:1px solid var(--border); }
   .venue-card-actions { display:flex; gap:0.4rem; }
   .venue-card-actions button { background:none; border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.56rem; letter-spacing:0.06em; text-transform:uppercase; padding:4px 8px; cursor:pointer; }
   .venue-card-actions button:hover { border-color:var(--teal); color:var(--teal); }
@@ -126,14 +126,14 @@
   .preview-status { width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.2); padding:0.9rem; display:flex; flex-direction:column; align-items:center; gap:0.35rem; }
   .preview-ring { width:26px; height:26px; border-radius:50%; border:1px solid var(--p-highlight); display:flex; align-items:center; justify-content:center; }
   .preview-dot { width:12px; height:12px; border-radius:50%; background:var(--p-highlight); }
-  .preview-status-label { font-family:var(--p-font-display); font-size:0.68rem; font-style:italic; color:var(--p-text); }
-  .preview-status-sub { font-size:0.48rem; font-family:var(--p-font-body); color:var(--p-muted); letter-spacing:0.06em; text-transform:uppercase; }
-  .preview-cancel { font-size:0.5rem; font-family:var(--p-font-body); color:var(--p-muted); text-decoration:underline; }
+  .preview-status-label { font-family:var(--p-font-display); font-size:0.68rem; font-style:italic; color:var(--p-text); text-align:center; }
+  .preview-status-sub { font-size:0.48rem; font-family:var(--p-font-body); color:var(--p-muted); letter-spacing:0.06em; text-transform:uppercase; text-align:center; }
+  .preview-cancel { font-size:0.5rem; font-family:var(--p-font-body); color:var(--p-muted); text-decoration:underline; text-align:center; }
   .preview-links { width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.2); }
   .preview-links:empty { display:none; border:none; background:none; }
   .preview-link-row { display:flex; justify-content:space-between; padding:0.45rem 0.7rem; border-bottom:1px solid rgba(255,255,255,0.07); font-size:0.5rem; font-family:var(--p-font-body); letter-spacing:0.05em; text-transform:uppercase; color:var(--p-muted); }
   .preview-link-row:last-child { border-bottom:none; }
-  .preview-footer { font-family:var(--p-font-display); font-size:0.48rem; color:var(--p-muted); letter-spacing:0.08em; text-transform:uppercase; }
+  .preview-footer { font-family:var(--p-font-display); font-size:0.48rem; color:var(--p-muted); letter-spacing:0.08em; text-transform:uppercase; text-align:center; }
   .preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .preview-cell { display:flex; flex-direction:column; min-width:0; }
   .preview-cell-label { font-size:0.56rem; font-weight:500; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.3rem; }
@@ -228,7 +228,7 @@
     </svg>
   </div>
   <div class="header-actions">
-    <span id="account-email" class="header-link" style="cursor:default;"></span>
+    <span id="header-performer-name" class="header-name" style="display:none;"></span>
     <button class="header-link" id="performer-info-link">Performer Info</button>
     <button class="btn btn-outline" id="signout-btn">Sign Out</button>
   </div>
@@ -293,12 +293,12 @@
               <div class="color-row" style="border-bottom:none;"><div class="setting-label">Body font</div><select id="c-font-body"></select></div>
             </div>
             <div class="panel-block">
-              <div class="form-label">Links <span style="text-transform:none;letter-spacing:0;">(up to 6, shown on the screens you choose)</span></div>
+              <div class="form-label">Links</div>
               <div id="link-list" style="margin-bottom:0.6rem;"></div>
               <button type="button" class="venue-btn" id="add-link-btn">+ Add link</button>
             </div>
             <div class="panel-block">
-              <div class="form-label">Text <span style="text-transform:none;letter-spacing:0;">(leave a field blank to use the default wording)</span></div>
+              <div class="form-label">Text</div>
               <div id="text-groups"></div>
             </div>
             <div class="error-msg" id="config-error" style="display:none;"></div>
@@ -307,7 +307,7 @@
           </div>
 
           <div class="appearance-preview">
-            <div class="preview-label">Guest preview <span style="text-transform:none;letter-spacing:0;">(not interactive)</span></div>
+            <div class="preview-label">Guest preview</div>
             <div class="preview-grid" id="preview-grid">
               <div class="preview-cell">
                 <div class="preview-cell-label">Entry</div>
@@ -341,12 +341,10 @@
         <div class="panel-block" style="max-width:560px;">
           <div class="form-label">Table numbers</div>
           <textarea class="short-input" id="c-tables" placeholder="1,2,3,4,5,10,20,21" rows="3" style="resize:vertical;line-height:1.7;min-height:4.5em;"></textarea>
-          <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;margin-top:0.5rem;">Comma-separated list for QR code generation</div>
           <div class="error-msg" id="tables-error" style="display:none;text-align:left;padding:0.5rem 0 0;"></div>
           <button class="btn btn-solid" id="save-tables-btn" style="margin-top:0.75rem;">Save Table Numbers</button>
           <div class="saved-msg" id="tables-saved" style="text-align:left;">Table numbers saved</div>
         </div>
-        <div style="font-size:0.66rem;color:var(--muted);letter-spacing:0.06em;margin-bottom:1rem;">Up to 8 photos. Guests never see these.</div>
         <div id="floorplan-list" style="max-width:560px;"></div>
         <div style="display:flex;gap:0.6rem;max-width:560px;">
           <label class="file-label" id="floorplan-upload-label" style="flex:1;">
@@ -362,7 +360,6 @@
 
       <div class="tab-panel" id="panel-qr">
         <div class="panel-title">QR Code</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:1.25rem;max-width:480px;line-height:1.6;">This is the single code guests scan to enter. Download it to print, share, or place on tables.</div>
         <div id="qr-preview" style="margin-bottom:1.25rem;"></div>
         <div style="display:flex;gap:0.75rem;">
           <button class="btn btn-outline" id="qr-copy-link-btn">Copy Link</button>
@@ -371,7 +368,7 @@
 
         <div class="panel-block" style="max-width:480px;margin-top:2rem;">
           <div class="form-label" style="margin-bottom:0.75rem;">Table Signage</div>
-          <div style="font-size:0.7rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;">A ready-to-cut sheet with crop marks, sized to hand straight to a print shop.</div>
+          <div style="font-size:0.7rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;">Ready to print and cut.</div>
 
           <div class="color-row"><div class="setting-label">Signage type</div>
             <select id="sg-type">
@@ -413,13 +410,13 @@
             </select>
           </div>
 
-          <div id="sg-tent-note" style="display:none;font-size:0.64rem;color:var(--gold);line-height:1.6;padding-top:0.75rem;">Print and fold one test copy before running a full batch. QR codes and number boxes are printed opposite each other on the two panels so both read right-side up once folded. Fold lines are dashed, cut lines are solid.</div>
+          <div id="sg-tent-note" style="display:none;font-size:0.64rem;color:var(--gold);line-height:1.6;padding-top:0.75rem;">Recommended: Print and fold one test copy before running a full batch.</div>
           <div id="sg-contrast-warning" class="error-msg" style="display:none;text-align:left;padding-top:0.75rem;"></div>
           <div id="sg-typed-warning" class="error-msg" style="display:none;text-align:left;padding-top:0.75rem;color:var(--gold);"></div>
-          <div id="sg-blank-note" style="font-size:0.66rem;color:var(--muted);line-height:1.6;padding-top:0.75rem;">Printing a few extra blank cards is cheap insurance, any one can cover a lost or ruined card by hand.</div>
+          <div id="sg-blank-note" style="font-size:0.66rem;color:var(--muted);line-height:1.6;padding-top:0.75rem;">Recommended: Print a few spares.</div>
           <div id="sg-layout-info" style="font-size:0.68rem;color:var(--muted);margin-top:0.75rem;"></div>
 
-          <button class="btn btn-solid" id="sg-generate-btn" style="margin-top:0.75rem;width:100%;">Download Sheet (PDF)</button>
+          <button class="btn btn-solid" id="sg-generate-btn" style="margin-top:0.75rem;width:100%;">Download PDF</button>
         </div>
       </div>
 
@@ -466,7 +463,6 @@
       </label>
       <div class="form-label" style="margin-top:0.5rem;">Table numbers</div>
       <textarea class="text-field" id="new-venue-tables" placeholder="e.g. 1,2,3,4,5,10,20,21,22" rows="2" style="resize:none;overflow:hidden;line-height:1.6;" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-      <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;">Comma-separated. You can add more floor plan photos after creating the venue.</div>
       <button class="btn btn-solid" id="add-venue-btn" style="margin-top:0.5rem;">Add Venue</button>
     </div>
   </div>
@@ -481,7 +477,7 @@
     </div>
     <div class="modal-body">
       <div class="form-label">Performer name</div>
-      <input type="text" class="text-field" id="performer-name" maxlength="60" placeholder="Shown to guests instead of a logo">
+      <input type="text" class="text-field" id="performer-name" maxlength="60" placeholder="Your name">
       <div class="form-label" style="margin-top:0.5rem;">Logo <span style="text-transform:none;letter-spacing:0;">(optional)</span></div>
       <div id="performer-logo-preview" style="display:none;"><img id="performer-logo-img" style="height:48px;width:auto;display:block;" alt="Logo"></div>
       <div style="display:flex;gap:0.5rem;">
@@ -613,7 +609,6 @@
       '</div>';
     if (withFooter) {
       html += '<div class="venue-card-footer">' +
-          '<div class="venue-card-id">ID: ' + v.slug + '</div>' +
           '<div class="venue-card-actions" data-slug="' + v.slug + '">' +
             '<button data-action="rename">Rename</button>' +
             '<button data-action="delete">Delete</button>' +
@@ -664,7 +659,7 @@
   function renameVenue(s) {
     var v = venues.find(function(v) { return v.slug === s; });
     if (!v) return;
-    var n = prompt('Rename venue (QR code links stay the same):', v.name);
+    var n = prompt('Rename venue:', v.name);
     if (!n || !n.trim()) return;
     db.collection('venues').doc(s).update({ name: n.trim() }).then(function() {
       v.name = n.trim();
@@ -904,7 +899,7 @@
       { key: 'entryPrompt', label: 'Prompt' },
       { key: 'entryButton', label: 'Button' },
       { key: 'entryError', label: 'Wrong number message' },
-      { key: 'notPerforming', label: 'Not performing message (also shown on the request page)' } ] },
+      { key: 'notPerforming', label: 'Not performing message' } ] },
     { title: 'Request page', fields: [
       { key: 'requestHeadline', label: 'Headline', multiline: true },
       { key: 'requestSubtext', label: 'Subtext', multiline: true },
@@ -1443,7 +1438,7 @@
     tent:  [{ v: '50.8x63.5', l: '2" × 2.5"' }, { v: '63.5x76.2', l: '2.5" × 3"', sel: true }, { v: '76.2x88.9', l: '3" × 3.5"' }]
   };
   var SIZE_LABEL = { flat: 'Size', block: 'Size', tent: 'Panel size' };
-  var BUTTON_LABEL = { flat: 'Download Flat Card Sheet (PDF)', block: 'Download Block Stand Sheet (PDF)', tent: 'Download Tent Card Sheet (PDF)' };
+  var BUTTON_LABEL = { flat: 'Download PDF', block: 'Download PDF', tent: 'Download PDF' };
 
   function populateSignageSizeOptions() {
     var type = document.getElementById('sg-type').value;
@@ -1564,7 +1559,7 @@
     if (colorMode === 'brand') {
       var picked = getSignageColors();
       if (picked.ratio < 4.5) {
-        cWarn.textContent = "Even this venue's best-contrasting color pair may not scan reliably once printed. Black and white is the safer choice for codes meant to actually be used.";
+        cWarn.textContent = "Low Contrast Warning: These colors may not scan reliably. Black and white is safer.";
         cWarn.style.display = 'block';
       } else { cWarn.style.display = 'none'; }
     } else { cWarn.style.display = 'none'; }
@@ -1572,7 +1567,7 @@
     var typedWarn = document.getElementById('sg-typed-warning');
     var blankNote = document.getElementById('sg-blank-note');
     if (numberMode === 'typed') {
-      typedWarn.textContent = "Each typed card only works for its own table. If one is lost or ruined, there's no replacement until you print again — this batch automatically adds 3 blank spares at the end for exactly that.";
+      typedWarn.textContent = "Typed cards only work for their own table. This batch adds 3 blank spares.";
       typedWarn.style.display = 'block';
       blankNote.style.display = 'none';
     } else {
@@ -1815,10 +1810,18 @@
   var performerLogoFile = null;
   var performerRemoveLogo = false;
 
+  // The header shows the performer's name when one is set, and nothing otherwise.
+  function setHeaderName(name) {
+    var el = document.getElementById('header-performer-name');
+    el.textContent = name || '';
+    el.style.display = name ? '' : 'none';
+  }
+
   function loadPerformerProfile() {
     db.collection('performers').doc(currentUser.uid).get().then(function(snap) {
       var data = snap.exists ? snap.data() : {};
       document.getElementById('performer-name').value = data.name || '';
+      setHeaderName(data.name);
       if (data.logoUrl) {
         document.getElementById('performer-logo-img').src = data.logoUrl;
         document.getElementById('performer-logo-preview').style.display = 'block';
@@ -1854,7 +1857,7 @@
       var data = { name: name };
       if (logoUrl !== undefined) data.logoUrl = logoUrl;
       db.collection('performers').doc(currentUser.uid).set(data, { merge: true })
-        .then(function() { performerLogoFile = null; performerRemoveLogo = false; showSaved('performer-saved'); })
+        .then(function() { performerLogoFile = null; performerRemoveLogo = false; setHeaderName(name); showSaved('performer-saved'); })
         .catch(function() { errorEl.textContent = 'Could not save. Check your connection and try again.'; errorEl.style.display = 'block'; });
     }
     if (performerLogoFile) {
@@ -1875,7 +1878,6 @@
   firebase.auth().onAuthStateChanged(function(user) {
     if (!user) { window.location.replace('login.html?next=dashboard.html'); return; }
     currentUser = user;
-    document.getElementById('account-email').textContent = user.email;
     document.body.classList.remove('pending');
     loadVenues();
     loadPerformerProfile();

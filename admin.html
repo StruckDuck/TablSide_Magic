@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TablSide">
-<title>Admin — Tablside</title>
+<title>Admin | TablSide</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -158,7 +158,7 @@
 </select>
 
 <div class="map-container" id="map-container">
-  <div class="map-placeholder"><div class="map-placeholder-text">Select a venue to load floor plan</div></div>
+  <div class="map-placeholder"><div class="map-placeholder-text"></div></div>
 </div>
 
 <div class="heading-bar" id="heading-bar">
@@ -500,7 +500,7 @@
           // Saved venue belongs to another account or no longer exists
           settings.activeVenue = null;
           localStorage.removeItem('activeVenue');
-          setMapPlaceholder('Select a venue to load floor plan');
+          setMapPlaceholder('');
           updateSessionUI();
         }
       } else {

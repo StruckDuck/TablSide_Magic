@@ -130,7 +130,7 @@
       <button class="btn" id="apply-tables-btn" style="padding:0.3rem 0.6rem;">Apply</button>
     </div>
     <div class="spacer"></div>
-    <label class="btn" for="load-input">Load Layout</label>
+    <label class="btn" id="load-label" for="load-input">Load Layout</label>
     <input type="file" id="load-input" accept="application/json">
     <button class="btn" id="save-btn">Save Layout (JSON)</button>
     <button class="btn" id="export-btn">Export Floor Plan (PNG)</button>
@@ -309,6 +309,10 @@
   if (isEmbedded) {
     document.getElementById('table-list-field').style.display = 'none';
     document.getElementById('save-to-venue-btn').style.display = 'block';
+    // Inside the dashboard the window already has a title, and saving goes to the venue,
+    // so the standalone header and the file buttons are hidden.
+    document.querySelector('.header').style.display = 'none';
+    ['load-label', 'save-btn', 'export-btn'].forEach(function(id) { document.getElementById(id).style.display = 'none'; });
     window.parent.postMessage({ type: 'floorplan-wizard-ready' }, '*');
   }
 
@@ -947,7 +951,7 @@
     var currentInvalid = existingNumber && tableNumbers.indexOf(existingNumber.value) === -1;
     var html = '<div class="picker-title">' + (existingNumber ? 'Change table number' : 'Place a table number') + '</div>';
     if (currentInvalid) {
-      html += '<div style="font-size:0.62rem;color:#a01a1a;background:#fbe9e9;border:1px solid #e2b8b8;padding:0.5rem;margin-bottom:0.5rem;line-height:1.5;">Currently "' + existingNumber.value + '" — no longer a valid table. Choose a real one below, or remove it.</div>';
+      html += '<div style="font-size:0.62rem;color:#a01a1a;background:#fbe9e9;border:1px solid #e2b8b8;padding:0.5rem;margin-bottom:0.5rem;line-height:1.5;">Currently "' + existingNumber.value + '", no longer a valid table.</div>';
     }
     html += '<div class="picker-grid">';
     tableNumbers.forEach(function(num) {
