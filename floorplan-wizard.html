@@ -64,6 +64,14 @@
   .picker-num.current { background:var(--teal); color:#fff; border-color:var(--teal); }
   .picker-num.taken { opacity:0.3; cursor:not-allowed; text-decoration:line-through; }
   .picker-remove { width:100%; padding:0.35rem; font-size:0.62rem; color:var(--red); background:none; border:1px solid #e2b8b8; cursor:pointer; letter-spacing:0.05em; text-transform:uppercase; }
+  .aspect-row { display:flex; align-items:center; gap:0.6rem; }
+  .aspect-label { font-size:0.62rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; }
+  .aspect-pills { display:flex; gap:0.3rem; }
+  .aspect-pill { padding:0.4rem 0.75rem; background:var(--surface2); border:1px solid var(--border); font-family:'Raleway',sans-serif; font-size:0.68rem; color:var(--text); cursor:pointer; }
+  .aspect-pill:hover { border-color:var(--teal); }
+  .aspect-pill.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+  #aspect-select { font-size:0.65rem; padding:0.4rem; border:1px solid var(--border); background:var(--surface2); }
+  .save-status { font-size:0.62rem; color:var(--muted); letter-spacing:0.06em; min-width:6.5rem; text-align:right; }
 </style>
 </head>
 <body>
@@ -75,6 +83,15 @@
 
 <div id="start-screen" class="start-screen">
   <div class="start-title">How do you want to start?</div>
+  <div class="aspect-row">
+    <span class="aspect-label">Shape</span>
+    <div class="aspect-pills">
+      <button type="button" class="aspect-pill" data-aspect="2:1">2:1</button>
+      <button type="button" class="aspect-pill active" data-aspect="16:9">16:9</button>
+      <button type="button" class="aspect-pill" data-aspect="3:2">3:2</button>
+      <button type="button" class="aspect-pill" data-aspect="4:3">4:3</button>
+    </div>
+  </div>
   <div class="start-options">
     <div class="start-card" id="start-photo">
       <div class="icon">📷</div>
@@ -88,6 +105,18 @@
     </div>
   </div>
   <input type="file" id="photo-input" accept="image/*">
+</div>
+
+<div id="resume-photo-screen" class="start-screen" style="display:none;">
+  <div class="start-title">Select the photo for this room</div>
+  <div class="start-options">
+    <div class="start-card" id="resume-photo-card">
+      <div class="icon">📷</div>
+      <div class="label">Choose photo</div>
+      <div class="sub">Your numbers and crop go back on top of it.</div>
+    </div>
+  </div>
+  <input type="file" id="resume-photo-input" accept="image/*">
 </div>
 
 <div id="editor" style="display:none; flex-direction:column; min-height:0; flex:1;">
@@ -115,6 +144,12 @@
       <span style="font-size:0.62rem;color:var(--muted);">Zoom</span>
       <input type="range" id="zoom-slider" min="0" max="100" value="0">
     </div>
+    <select id="aspect-select" title="Shape">
+      <option value="2:1">2:1</option>
+      <option value="16:9" selected>16:9</option>
+      <option value="3:2">3:2</option>
+      <option value="4:3">4:3</option>
+    </select>
     <div class="count-pill" id="count-pill">0 of 0 placed</div>
   </div>
 
@@ -130,18 +165,24 @@
       <button class="btn" id="apply-tables-btn" style="padding:0.3rem 0.6rem;">Apply</button>
     </div>
     <div class="spacer"></div>
+    <span class="save-status" id="save-status"></span>
     <label class="btn" id="load-label" for="load-input">Load Layout</label>
     <input type="file" id="load-input" accept="application/json">
     <button class="btn" id="save-btn">Save Layout (JSON)</button>
-    <button class="btn" id="export-btn">Export Floor Plan (PNG)</button>
-    <button class="btn primary" id="save-to-venue-btn" style="display:none;">Save to Venue</button>
+    <button class="btn" id="export-btn">Export image</button>
+    <button class="btn" id="save-keep-btn" style="display:none;">Save</button>
+    <button class="btn primary" id="save-to-venue-btn" style="display:none;">Save and close</button>
   </div>
 </div>
 
 <script>
   var canvas = document.getElementById('canvas');
   var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height; // 960x540, fixed 16:9
+  var W = 960, H = 540;       // the width is fixed; the height follows the chosen shape
+  var ASPECTS = { '2:1': 480, '16:9': 540, '3:2': 640, '4:3': 720 };
+  var aspect = '16:9';
+  var startAspect = '16:9';   // what's picked on the start screen
+  var renderScale = 1;        // 2 while drawing a sharper copy for export
 
   // ─── STATE ──────────────────────────────────────────────────────────────────
   var state = {
@@ -164,6 +205,7 @@
   document.getElementById('number-size-select').addEventListener('change', function() {
     numberSize = this.value;
     pushHistory(); draw();
+    markChanged(); // text size isn't part of undo, but it is part of the saved design
   });
   var nextId = 1;
   function uid() { return 'id' + (nextId++); }
@@ -187,6 +229,7 @@
     undoHistory.push(snap);
     historyIndex++;
     updateUndoRedoButtons();
+    markChanged();
   }
   function restore(snap) {
     // Deep-clone on the way back in too — assigning the stored arrays
@@ -197,6 +240,7 @@
     imageTransform = JSON.parse(JSON.stringify(snap.imageTransform));
     selectedShapeIds = []; selectedNumberIds = [];
     draw(); updateCountPill();
+    markChanged();
   }
   function undo() { if (historyIndex > 0) { historyIndex--; restore(undoHistory[historyIndex]); updateUndoRedoButtons(); } }
   function redo() { if (historyIndex < undoHistory.length - 1) { historyIndex++; restore(undoHistory[historyIndex]); updateUndoRedoButtons(); } }
@@ -244,23 +288,70 @@
   });
 
   // ─── START SCREEN ───────────────────────────────────────────────────────────
+  document.querySelectorAll('.aspect-pill').forEach(function(p) {
+    p.addEventListener('click', function() {
+      startAspect = p.dataset.aspect;
+      document.querySelectorAll('.aspect-pill').forEach(function(q) { q.classList.toggle('active', q === p); });
+    });
+  });
+
+  // A saved room keeps its own shape; otherwise it's whatever was picked above.
+  function chosenAspect(mode) {
+    return (pendingDesign && pendingDesign.mode === mode && pendingDesign.aspect) || startAspect;
+  }
+
+  function setAspect(r) {
+    if (!ASPECTS[r]) r = '16:9';
+    aspect = r; H = ASPECTS[r];
+    canvas.width = W; canvas.height = H;
+    document.getElementById('aspect-select').value = r;
+    if (photoImg) {
+      var cover = Math.max(W / photoImg.width, H / photoImg.height);
+      if (!imageTransform || imageTransform.scale < cover) imageTransform = { x: 0, y: 0, scale: cover };
+      clampImageTransform();
+    }
+    draw();
+  }
+  document.getElementById('aspect-select').addEventListener('change', function() {
+    var next = this.value;
+    if ((state.shapes.length || state.numbers.length) &&
+        !confirm('Changing the shape clips anything outside the new frame. Continue?')) {
+      this.value = aspect;
+      return;
+    }
+    setAspect(next);
+    markChanged();
+  });
+
+  function loadPhotoFile(file, done) {
+    var reader = new FileReader();
+    reader.onload = function() {
+      var img = new Image();
+      img.onload = function() { done(img); };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  function openWithPhoto(img) {
+    photoImg = img;
+    setAspect(chosenAspect('photo'));
+    imageTransform = { x: 0, y: 0, scale: Math.max(W / img.width, H / img.height) };
+    document.getElementById('resume-photo-screen').style.display = 'none';
+    startEditor('photo');
+  }
   document.getElementById('start-photo').addEventListener('click', function() {
     document.getElementById('photo-input').click();
   });
   document.getElementById('photo-input').addEventListener('change', function() {
     var file = this.files[0]; if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function() {
-      var img = new Image();
-      img.onload = function() {
-        photoImg = img;
-        var coverScale = Math.max(W / img.width, H / img.height);
-        imageTransform = { x: 0, y: 0, scale: coverScale };
-        startEditor('photo');
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+    loadPhotoFile(file, openWithPhoto);
+  });
+  document.getElementById('resume-photo-card').addEventListener('click', function() {
+    document.getElementById('resume-photo-input').click();
+  });
+  document.getElementById('resume-photo-input').addEventListener('change', function() {
+    var file = this.files[0]; if (!file) return;
+    loadPhotoFile(file, openWithPhoto);
   });
   document.getElementById('start-draw').addEventListener('click', function() { startEditor('draw'); });
 
@@ -274,20 +365,30 @@
   }
 
   function startEditor(mode) {
+    changeTrackingOn = false;
     state.mode = mode;
     state.shapes = []; state.numbers = [];
     undoHistory = []; historyIndex = -1;
+    setAspect(chosenAspect(mode));
     applyTableList();
     resumeDesignIfAny(mode); // overwrites shapes/numbers and pushes its own baseline if a matching design was sent in
     if (!undoHistory.length) pushHistory();
     document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('resume-photo-screen').style.display = 'none';
     document.getElementById('editor').style.display = 'flex';
     updateToolAvailability(mode);
     setTool(mode === 'photo' ? 'crop' : 'move');
     draw();
+    updateCountPill();
+    changeTrackingOn = true;
+    if (restarted) { restarted = false; markChanged(); } // starting over a saved room is a change to it
+    updateStatus();
   }
   document.getElementById('start-over-btn').addEventListener('click', function() {
     if (!confirm('Start over? This clears the current layout.')) return;
+    pendingDesign = null;
+    restarted = !!roomId;
+    changeTrackingOn = false;
     document.getElementById('editor').style.display = 'none';
     document.getElementById('start-screen').style.display = 'flex';
     document.getElementById('photo-input').value = '';
@@ -304,53 +405,177 @@
 
   // ─── EMBEDDED MODE (running inside the dashboard's Floor Plan tab) ─────────
   var isEmbedded = window.parent !== window;
-  var pendingDesign = null; // an existing design to resume, if the parent sent one
+  var pendingDesign = null;   // the saved design of the room being edited, if there is one
+  var roomId = null;          // null until the room exists
+  var roomName = '', venueName = '';
+  var takenElsewhere = [];    // table numbers already placed in this venue's other rooms
+  var initDone = false;
+  var restarted = false;
 
   if (isEmbedded) {
     document.getElementById('table-list-field').style.display = 'none';
+    document.getElementById('save-keep-btn').style.display = 'block';
     document.getElementById('save-to-venue-btn').style.display = 'block';
-    // Inside the dashboard the window already has a title, and saving goes to the venue,
-    // so the standalone header and the file buttons are hidden.
+    // Inside the dashboard the window already has a title, and saving goes to the
+    // venue, so the standalone header and the file buttons are hidden.
     document.querySelector('.header').style.display = 'none';
-    ['load-label', 'save-btn', 'export-btn'].forEach(function(id) { document.getElementById(id).style.display = 'none'; });
+    ['load-label', 'save-btn'].forEach(function(id) { document.getElementById(id).style.display = 'none'; });
     window.parent.postMessage({ type: 'floorplan-wizard-ready' }, '*');
+  } else {
+    document.getElementById('save-status').style.display = 'none';
   }
 
   window.addEventListener('message', function(e) {
     var data = e.data || {};
-    if (data.type !== 'floorplan-init') return;
+    if (data.type === 'floorplan-init') applyInit(data);
+    else if (data.type === 'floorplan-saved') onSaved(data);
+    else if (data.type === 'floorplan-save-failed') onSaveFailed();
+  });
+
+  function applyInit(data) {
     tableNumbers = data.tableNumbers || [];
+    takenElsewhere = data.takenElsewhere || [];
     document.getElementById('table-list-input').value = tableNumbers.join(',');
     updateCountPill();
-    if (data.design) pendingDesign = data.design;
-  });
+    if (initDone) return; // the dashboard may announce itself twice; only the first one starts anything
+    initDone = true;
+    venueName = data.venueName || '';
+    roomName = (data.room && data.room.name) || data.suggestedName || '';
+    if (data.room) {
+      roomId = data.room.id;
+      initialImageStale = !!data.room.imageStale;
+      if (data.room.design) {
+        pendingDesign = data.room.design;
+        if (pendingDesign.mode === 'photo') {
+          // The original photo isn't stored, so it has to be picked again.
+          document.getElementById('start-screen').style.display = 'none';
+          document.getElementById('resume-photo-screen').style.display = 'flex';
+        } else {
+          startEditor('draw');
+        }
+      }
+    }
+    updateStatus();
+  }
 
   function resumeDesignIfAny(mode) {
     if (!pendingDesign || pendingDesign.mode !== mode) return;
-    state.shapes = pendingDesign.shapes || [];
-    state.numbers = pendingDesign.numbers || [];
+    state.shapes = JSON.parse(JSON.stringify(pendingDesign.shapes || []));
+    state.numbers = JSON.parse(JSON.stringify(pendingDesign.numbers || []));
     numberSize = normalizeNumberSize(pendingDesign.numberSize);
     document.getElementById('number-size-select').value = numberSize;
-    if (mode === 'photo' && pendingDesign.imageTransform) imageTransform = pendingDesign.imageTransform;
+    if (mode === 'photo' && pendingDesign.imageTransform && photoImg) {
+      imageTransform = JSON.parse(JSON.stringify(pendingDesign.imageTransform));
+      // A different photo than the original may be chosen: keep the frame fully covered.
+      var cover = Math.max(W / photoImg.width, H / photoImg.height);
+      if (!(imageTransform.scale >= cover)) imageTransform.scale = cover;
+      clampImageTransform();
+    }
     var maxId = 0;
     state.shapes.concat(state.numbers).forEach(function(o) { maxId = Math.max(maxId, parseInt((o.id || '').replace('id', '')) || 0); });
     nextId = maxId + 1;
     undoHistory = []; historyIndex = -1; pushHistory();
   }
 
-  document.getElementById('save-to-venue-btn').addEventListener('click', function() {
-    var wasShapes = selectedShapeIds, wasNumbers = selectedNumberIds;
-    selectedShapeIds = []; selectedNumberIds = [];
-    draw();
-    var png = canvas.toDataURL('image/png');
-    selectedShapeIds = wasShapes; selectedNumberIds = wasNumbers; draw();
+  // ─── SAVING TO THE VENUE ────────────────────────────────────────────────────
+  // The design autosaves a few seconds after any change. Autosave saves the
+  // design only; the room's image is only redrawn and replaced on Save. The
+  // first autosave of a brand-new room does both, since a room needs an image.
+  var AUTOSAVE_MS = 3000;
+  var changeTrackingOn = false;
+  var changeSeq = 0, designSavedSeq = 0, imageSavedSeq = 0;
+  var initialImageStale = false;   // the saved design was already newer than the saved image
+  var saving = false, saveFailed = false, autosaveTimer = null;
 
-    var design = { mode: state.mode, shapes: state.shapes, numbers: state.numbers, numberSize: numberSize };
-    if (state.mode === 'photo') design.imageTransform = imageTransform;
-    window.parent.postMessage({ type: 'floorplan-save', png: png, design: design }, '*');
+  function imageIsStale() { return initialImageStale || changeSeq > imageSavedSeq; }
+  function hasUnsaved() { return changeSeq > designSavedSeq || imageIsStale(); }
+
+  function updateButtons() {
+    document.getElementById('save-keep-btn').disabled = saving;
+    document.getElementById('save-to-venue-btn').disabled = saving;
+  }
+  function updateStatus() {
+    if (!isEmbedded) return;
+    var text = '';
+    if (saving) text = 'Saving\u2026';
+    else if (saveFailed) text = 'Could not save';
+    else if (changeSeq > designSavedSeq) text = 'Unsaved changes';
+    else if (imageIsStale()) text = 'Draft saved';
+    else if (roomId) text = 'Saved';
+    document.getElementById('save-status').textContent = text;
+    window.parent.postMessage({ type: 'floorplan-state', unsaved: hasUnsaved() }, '*');
+  }
+  function markChanged() {
+    if (!changeTrackingOn) return;
+    changeSeq++;
+    updateStatus();
+    scheduleAutosave();
+  }
+  function scheduleAutosave(ms) {
+    if (!isEmbedded) return;
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(runAutosave, ms || AUTOSAVE_MS);
+  }
+  function currentDesign() {
+    var d = { mode: state.mode, aspect: aspect, shapes: state.shapes, numbers: state.numbers, numberSize: numberSize };
+    if (state.mode === 'photo') d.imageTransform = imageTransform;
+    return JSON.parse(JSON.stringify(d));
+  }
+  function runAutosave() {
+    if (!isEmbedded || !state.mode || changeSeq <= designSavedSeq) return;
+    if (saving) { scheduleAutosave(); return; }
+    if (!roomId) { sendSave(false); return; }
+    saving = true; saveFailed = false; updateButtons(); updateStatus();
+    window.parent.postMessage({ type: 'floorplan-autosave', roomId: roomId, design: currentDesign(), seq: changeSeq }, '*');
+  }
+  function sendSave(close) {
+    if (!isEmbedded || saving || !state.mode) return;
+    clearTimeout(autosaveTimer);
+    saving = true; saveFailed = false; updateButtons(); updateStatus();
+    window.parent.postMessage({ type: 'floorplan-save', roomId: roomId, png: renderToDataUrl(1), design: currentDesign(), seq: changeSeq, close: !!close }, '*');
+  }
+  function onSaved(data) {
+    saving = false; saveFailed = false;
+    if (data.roomId) roomId = data.roomId;
+    if (data.name) roomName = data.name;
+    designSavedSeq = Math.max(designSavedSeq, data.seq || 0);
+    if (data.imageUpdated) { imageSavedSeq = Math.max(imageSavedSeq, data.seq || 0); initialImageStale = false; }
+    updateButtons(); updateStatus();
+    if (changeSeq > designSavedSeq) scheduleAutosave();
+  }
+  function onSaveFailed() {
+    saving = false; saveFailed = true;
+    updateButtons(); updateStatus();
+    scheduleAutosave(AUTOSAVE_MS * 3); // try again shortly
+  }
+  document.getElementById('save-keep-btn').addEventListener('click', function() { sendSave(false); });
+  document.getElementById('save-to-venue-btn').addEventListener('click', function() { sendSave(true); });
+
+  // ─── EXPORT ─────────────────────────────────────────────────────────────────
+  // Draws the plan without selection handles, optionally larger, and returns it as a PNG.
+  function renderToDataUrl(scale) {
+    var wasShapes = selectedShapeIds, wasNumbers = selectedNumberIds, wasHighlight = highlightShapeId;
+    selectedShapeIds = []; selectedNumberIds = []; highlightShapeId = null;
+    renderScale = scale; canvas.width = W * scale; canvas.height = H * scale;
+    draw();
+    var url = canvas.toDataURL('image/png');
+    renderScale = 1; canvas.width = W; canvas.height = H;
+    selectedShapeIds = wasShapes; selectedNumberIds = wasNumbers; highlightShapeId = wasHighlight;
+    draw();
+    return url;
+  }
+  function slugify(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+  document.getElementById('export-btn').addEventListener('click', function() {
+    var url = renderToDataUrl(2); // double size, so it stays sharp when printed
+    var base = [slugify(venueName), slugify(roomName)].filter(Boolean).join('-') || 'floor-plan';
+    var a = document.createElement('a');
+    a.href = url; a.download = base + '.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
+
   function updateCountPill() {
-    document.getElementById('count-pill').textContent = state.numbers.length + ' of ' + tableNumbers.length + ' placed';
+    var elsewhere = takenElsewhere.filter(function(v, i, arr) { return arr.indexOf(v) === i && tableNumbers.indexOf(v) > -1; }).length;
+    document.getElementById('count-pill').textContent = (state.numbers.length + elsewhere) + ' of ' + tableNumbers.length + ' placed';
   }
 
   // ─── TOOL SWITCHING ─────────────────────────────────────────────────────────
@@ -461,6 +686,7 @@
 
   function draw() {
     updateCopyPasteButtons();
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
     ctx.clearRect(0, 0, W, H);
 
     if (state.mode === 'photo' && photoImg) {
@@ -955,9 +1181,10 @@
     }
     html += '<div class="picker-grid">';
     tableNumbers.forEach(function(num) {
-      var taken = takenValues.indexOf(num) > -1;
+      var elsewhere = takenElsewhere.indexOf(num) > -1;
+      var taken = takenValues.indexOf(num) > -1 || elsewhere;
       var isCurrent = existingNumber && existingNumber.value === num;
-      html += '<div class="picker-num' + (taken ? ' taken' : '') + (isCurrent ? ' current' : '') + '" data-num="' + num + '">' + num + '</div>';
+      html += '<div class="picker-num' + (taken ? ' taken' : '') + (isCurrent ? ' current' : '') + '" data-num="' + num + '"' + (elsewhere ? ' title="Placed in another room"' : '') + '>' + num + '</div>';
     });
     html += '</div>';
     if (existingNumber) html += '<button class="picker-remove" id="picker-remove-btn">Remove from plan</button>';
@@ -992,7 +1219,7 @@
 
   // ─── SAVE / LOAD / EXPORT ───────────────────────────────────────────────────
   document.getElementById('save-btn').addEventListener('click', function() {
-    var data = { version: 1, mode: state.mode, shapes: state.shapes, numbers: state.numbers, imageTransform: imageTransform, tableNumbers: tableNumbers, numberSize: numberSize };
+    var data = { version: 1, mode: state.mode, aspect: aspect, shapes: state.shapes, numbers: state.numbers, imageTransform: imageTransform, tableNumbers: tableNumbers, numberSize: numberSize };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'floor-plan-layout.json';
@@ -1007,6 +1234,7 @@
         var data = JSON.parse(reader.result);
         if (data.mode === 'photo') { alert('This saved layout used a photo. Re-upload the same photo after loading to restore it.'); }
         state.mode = data.mode || 'draw';
+        setAspect(data.aspect || '16:9');
         state.shapes = (data.shapes || []).map(function(s) { if (s.kind === 'circle') s.kind = 'ellipse'; return s; });
         state.numbers = data.numbers || [];
         imageTransform = data.imageTransform || { x: 0, y: 0, scale: 1 };

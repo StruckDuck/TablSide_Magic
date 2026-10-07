@@ -100,7 +100,9 @@
   .link-screens label { display:flex; align-items:center; gap:0.3rem; cursor:pointer; }
   .floorplan-row { display:flex; align-items:center; gap:0.5rem; border:1px solid var(--border); padding:0.5rem; margin-bottom:0.5rem; }
   .floorplan-row img { width:52px; height:52px; object-fit:cover; flex-shrink:0; }
-  .floorplan-row .fp-label { flex:1; font-size:0.62rem; color:var(--muted); }
+  .floorplan-row .fp-info { flex:1; min-width:0; }
+  .fp-name { font-size:0.72rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fp-note { font-size:0.58rem; color:var(--muted); letter-spacing:0.04em; margin-top:0.15rem; }
   .file-label { display:flex; align-items:center; gap:0.5rem; padding:0.65rem 0.85rem; background:var(--surface2); border:1px solid var(--border); cursor:pointer; font-size:0.68rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; }
   .file-label.ready { border-color:var(--teal); color:var(--teal); }
   .venue-btn { background:none; border:1px solid var(--border); color:var(--muted); font-family:'Raleway',sans-serif; font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase; padding:6px 10px; cursor:pointer; white-space:nowrap; }
@@ -345,14 +347,14 @@
           <button class="btn btn-solid" id="save-tables-btn" style="margin-top:0.75rem;">Save Table Numbers</button>
           <div class="saved-msg" id="tables-saved" style="text-align:left;">Table numbers saved</div>
         </div>
-        <div id="floorplan-list" style="max-width:560px;"></div>
+        <div id="room-list" style="max-width:560px;"></div>
         <div style="display:flex;gap:0.6rem;max-width:560px;">
           <label class="file-label" id="floorplan-upload-label" style="flex:1;">
             <span id="floorplan-upload-text">+ Add floor plan photo</span>
             <input type="file" id="floorplan-upload-input" accept="image/*" style="display:none;">
           </label>
           <button class="file-label" id="open-floorplan-wizard-btn" style="flex:1;cursor:pointer;">
-            <span id="floorplan-wizard-btn-text">+ Design a floor plan</span>
+            <span>+ Design a room</span>
           </button>
         </div>
         <div class="error-msg" id="floorplan-error" style="display:none;max-width:560px;"></div>
@@ -498,7 +500,7 @@
 <div class="modal-overlay" id="floorplan-wizard-modal">
   <div class="modal" style="max-width:1100px;width:95vw;height:90vh;max-height:90vh;display:flex;flex-direction:column;">
     <div class="modal-header">
-      <div class="modal-title">Design a Floor Plan</div>
+      <div class="modal-title">Design a Room</div>
       <button class="modal-close" id="floorplan-wizard-modal-close">&times;</button>
     </div>
     <div style="flex:1;min-height:0;">
@@ -529,7 +531,7 @@
   var currentTab = 'tonight';
   var newMapFile = null;
   var MAX_LINKS = 6;
-  var MAX_PHOTOS = 8;
+  var MAX_ROOMS = 8;
   var TIMER_MINS = 5;
   var DEFAULT_COLORS = { bg:'#26060f', box:'#273534', accent:'#6f0f43', highlight:'#927b52', text:'#eae9d6', muted:'#9aab9a' };
   var DEFAULT_FONTS = { display: 'Cormorant Garamond', body: 'Raleway' };
@@ -623,7 +625,7 @@
     db.collection('venues').where('ownerUid', '==', currentUser.uid).get().then(function(snap) {
       venues = snap.docs.map(function(d) {
         var data = d.data();
-        return { name: data.name, slug: d.id, colors: data.colors || {}, fonts: data.fonts || {}, texts: data.texts || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], floorPlanDesign: data.floorPlanDesign || null, sessionActive: data.sessionActive === true };
+        return { name: data.name, slug: d.id, colors: data.colors || {}, fonts: data.fonts || {}, texts: data.texts || {}, links: data.links || [], tables: data.tables || [], mapUrls: data.mapUrls || [], floorPlanDesign: data.floorPlanDesign || null, rooms: [], roomsLoaded: false, sessionActive: data.sessionActive === true };
       });
       renderVenueGrid();
       if (afterLoad) afterLoad();
@@ -678,6 +680,12 @@
       snap.docs.forEach(function(d) { batch.delete(d.ref); });
       return batch.commit();
     }).then(function() {
+      return venueRef.collection('rooms').get();
+    }).then(function(snap) {
+      var batch = db.batch();
+      snap.docs.forEach(function(d) { batch.delete(d.ref); });
+      return batch.commit();
+    }).then(function() {
       return venueRef.delete();
     }).then(function() {
       storage.ref('venue-maps/' + s).listAll()
@@ -728,16 +736,18 @@
       var id = generateVenueId();
       db.collection('venues').doc(id).set({
         ownerUid: currentUser.uid, name: name, tables: tableNums,
-        colors: {}, links: [], mapUrls: [], sessionActive: false,
+        colors: {}, links: [], sessionActive: false,
         timerMins: TIMER_MINS, createdAt: FS.serverTimestamp()
       }).then(function() {
-        var v = { name: name, slug: id, mapUrls: [], colors: {}, links: [], tables: tableNums };
+        var v = { name: name, slug: id, colors: {}, links: [], tables: tableNums, rooms: [], roomsLoaded: true };
         if (!fileToUpload) { finish(id, v); return; }
         uploadFloorplanPhoto(id, fileToUpload).then(function(url) {
-          v.mapUrls = [url];
-          db.collection('venues').doc(id).update({ mapUrls: v.mapUrls }).catch(function() {});
-          finish(id, v);
-        }).catch(function() { finish(id, v); });
+          var ref = roomsRef(id).doc();
+          var room = { name: 'Room 1', order: 0, imageUrl: url };
+          return ref.set(Object.assign({ createdAt: FS.serverTimestamp() }, room)).then(function() {
+            v.rooms.push(Object.assign({ id: ref.id }, room));
+          });
+        }).then(function() { finish(id, v); }).catch(function() { finish(id, v); });
       }).catch(function() {
         if (attemptsLeft > 0) { tryCreate(attemptsLeft - 1); return; }
         alert('Could not create the venue. Check your connection and try again.');
@@ -782,6 +792,13 @@
     switchWorkspaceTab('overview');
     renderOverview(v);
     renderCustomizeForm(v);
+    ensureRooms(v).then(function() {
+      if (workspaceSlug !== v.slug) return;
+      renderOverview(v);
+      renderRoomRows();
+    }).catch(function() {
+      if (workspaceSlug === v.slug) showFloorplanError('Could not load the floor plans. Check your connection and try again.');
+    });
   }
 
   // ─── OVERVIEW ───────────────────────────────────────────────────────────────
@@ -790,9 +807,10 @@
       '<div class="venue-card" style="cursor:default;">' + previewHtml(v, false) + '</div>';
     document.getElementById('overview-id').textContent = 'Venue ID: ' + v.slug;
     var thumbEl = document.getElementById('overview-floorplan-thumb');
-    thumbEl.innerHTML = (v.mapUrls && v.mapUrls.length)
-      ? '<img class="overview-thumb" src="' + v.mapUrls[0] + '" alt="Floor plan">'
-      : '<div style="font-size:0.68rem;color:var(--muted);">No floor plan photos yet.</div>';
+    var firstUrl = (v.rooms && v.rooms.length) ? v.rooms[0].imageUrl : ((v.mapUrls && v.mapUrls[0]) || null);
+    thumbEl.innerHTML = firstUrl
+      ? '<img class="overview-thumb" src="' + escapeAttr(firstUrl) + '" alt="Floor plan">'
+      : (v.roomsLoaded ? '<div style="font-size:0.68rem;color:var(--muted);">No floor plan yet.</div>' : '');
   }
   document.getElementById('overview-copy-link-btn').addEventListener('click', function() { copyEntryLink(workspaceSlug, this); });
   document.getElementById('overview-qr-btn').addEventListener('click', function() { downloadVenueQR(workspaceSlug); });
@@ -1139,85 +1157,285 @@
     return ref.put(file, { customMetadata: { ownerUid: currentUser.uid } }).then(function(snap) { return snap.ref.getDownloadURL(); });
   }
 
-  // ─── FLOOR PLAN WIZARD (embedded via iframe) ───────────────────────────────
-  // The iframe is reloaded from scratch every time it's opened, rather than
-  // reused across visits — that guarantees it always starts from exactly the
-  // venue's latest saved design, never leftover state from an earlier,
-  // unsaved session.
-  var wizardOpenForSlug = null;
-
-  function sendFloorplanInit() {
-    var v = venues.find(function(v) { return v.slug === wizardOpenForSlug; });
-    document.getElementById('floorplan-wizard-iframe').contentWindow.postMessage({
-      type: 'floorplan-init',
-      tableNumbers: (v && v.tables) || [],
-      design: (v && v.floorPlanDesign) || null
-    }, '*');
+  // ─── FLOOR PLAN ROOMS ───────────────────────────────────────────────────────
+  // Each room is one floor plan image: an uploaded photo, or a design built in
+  // the wizard. Rooms are stored where only the owner can read them.
+  function currentVenue() { return venues.find(function(v) { return v.slug === workspaceSlug; }); }
+  function roomsRef(slug) { return db.collection('venues').doc(slug).collection('rooms'); }
+  function showFloorplanError(msg) {
+    var el = document.getElementById('floorplan-error');
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
   }
-
-  document.getElementById('open-floorplan-wizard-btn').addEventListener('click', function() {
-    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
-    if (!v) return;
-    wizardOpenForSlug = workspaceSlug;
-    document.getElementById('floorplan-wizard-iframe').src = 'floorplan-wizard.html';
-    openModal('floorplan-wizard-modal');
-  });
-  function closeFloorplanWizard() {
-    closeModal('floorplan-wizard-modal');
-    document.getElementById('floorplan-wizard-iframe').src = 'about:blank';
-    wizardOpenForSlug = null;
-  }
-  document.getElementById('floorplan-wizard-modal-close').addEventListener('click', closeFloorplanWizard);
-
-  document.getElementById('floorplan-wizard-iframe').addEventListener('load', function() {
-    if (this.src === 'about:blank' || !this.src || !wizardOpenForSlug) return;
-    sendFloorplanInit();
-  });
-
-  window.addEventListener('message', function(e) {
-    var data = e.data || {};
-    if (data.type === 'floorplan-wizard-ready') {
-      // The wizard's own script can finish and announce itself before the
-      // parent's iframe "load" event fires — either path reaching here is
-      // fine, sending init twice is harmless.
-      if (wizardOpenForSlug) sendFloorplanInit();
-      return;
-    }
-    if (data.type !== 'floorplan-save') return;
-    var saveSlug = wizardOpenForSlug; // the save belongs to whichever venue the wizard was opened for, not necessarily the venue currently open in the workspace
-
-    var v = venues.find(function(v) { return v.slug === saveSlug; });
-    if (!v) return;
-    var errorEl = document.getElementById('floorplan-error');
-    errorEl.style.display = 'none';
-
-    fetch(data.png).then(function(r) { return r.blob(); }).then(function(blob) {
-      var ref = storage.ref('venue-maps/' + saveSlug + '/' + generateFileId());
-      return ref.put(blob, { customMetadata: { ownerUid: currentUser.uid } });
-    }).then(function(snap) {
-      return snap.ref.getDownloadURL();
-    }).then(function(url) {
-      var urls = (v.mapUrls || []).slice();
-      if (urls.length >= MAX_PHOTOS) urls.shift(); // make room rather than silently fail if already at the cap
-      urls.push(url);
-      return db.collection('venues').doc(saveSlug).update({ mapUrls: urls, floorPlanDesign: data.design }).then(function() {
-        v.mapUrls = urls; v.floorPlanDesign = data.design;
-      });
-    }).then(function() {
-      renderFloorplanRows();
-      renderOverview(v);
-      closeFloorplanWizard();
-    }).catch(function() {
-      errorEl.textContent = 'Could not save the floor plan design. Check your connection and try again.';
-      errorEl.style.display = 'block';
-    });
-  });
   function deleteFloorplanPhoto(url) {
     try { return storage.refFromURL(url).delete().catch(function() {}); }
     catch (e) { return Promise.resolve(); }
   }
+  function nextRoomName(v) {
+    var used = (v.rooms || []).map(function(r) { return r.name; });
+    var n = (v.rooms || []).length + 1;
+    while (used.indexOf('Room ' + n) > -1) n++;
+    return 'Room ' + n;
+  }
+
+  // Older venues kept their photos in a list on the venue itself. The first time
+  // one is opened, those photos become rooms (the saved design goes with the
+  // newest one), and the old fields are cleared only once the rooms are written.
+  function migrateLegacyFloorplans(v) {
+    var urls = v.mapUrls || [];
+    var venueRef = db.collection('venues').doc(v.slug);
+    function clearLegacy() {
+      return venueRef.update({ mapUrls: [], floorPlanDesign: FS.delete() })
+        .then(function() { v.mapUrls = []; v.floorPlanDesign = null; })
+        .catch(function() {});
+    }
+    if (!urls.length) return Promise.resolve();
+    if (v.rooms.length) return clearLegacy(); // an earlier attempt got as far as writing the rooms
+    var batch = db.batch(), made = [];
+    urls.forEach(function(url, i) {
+      var ref = roomsRef(v.slug).doc();
+      var data = { name: 'Room ' + (i + 1), order: i, imageUrl: url };
+      if (i === urls.length - 1 && v.floorPlanDesign) {
+        data.design = v.floorPlanDesign.aspect ? v.floorPlanDesign : Object.assign({ aspect: '16:9' }, v.floorPlanDesign);
+      }
+      batch.set(ref, Object.assign({ createdAt: FS.serverTimestamp() }, data));
+      made.push(Object.assign({ id: ref.id }, data));
+    });
+    return batch.commit().then(function() { v.rooms = made; return clearLegacy(); }).catch(function() {});
+  }
+
+  function ensureRooms(v) {
+    if (v.roomsLoaded) return Promise.resolve();
+    if (v.roomsLoading) return v.roomsLoading;
+    v.roomsLoading = roomsRef(v.slug).orderBy('order').get().then(function(snap) {
+      v.rooms = snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+      return migrateLegacyFloorplans(v);
+    }).then(function() {
+      v.roomsLoaded = true; v.roomsLoading = null;
+    }).catch(function(err) {
+      v.roomsLoading = null; throw err;
+    });
+    return v.roomsLoading;
+  }
+
+  function renderRoomRows() {
+    var v = currentVenue();
+    if (!v) return;
+    var rooms = v.rooms || [];
+    document.getElementById('room-list').innerHTML = rooms.map(function(r, i) {
+      return '<div class="floorplan-row" data-id="' + escapeAttr(r.id) + '">' +
+        '<img src="' + escapeAttr(r.imageUrl) + '" alt="' + escapeAttr(r.name) + '">' +
+        '<div class="fp-info"><div class="fp-name">' + escapeHtml(r.name) + '</div>' +
+          (r.imageStale ? '<div class="fp-note">Image out of date</div>' : '') + '</div>' +
+        (r.design ? '<button type="button" class="venue-btn edit-room-btn">Edit</button>' : '') +
+        '<button type="button" class="venue-btn move-up-btn"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" class="venue-btn move-down-btn"' + (i === rooms.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button type="button" class="venue-btn rename-room-btn">Rename</button>' +
+        '<button type="button" class="venue-btn danger delete-room-btn">Delete</button>' +
+      '</div>';
+    }).join('');
+    var blocked = !v.roomsLoaded || rooms.length >= MAX_ROOMS;
+    ['floorplan-upload-label', 'open-floorplan-wizard-btn'].forEach(function(id) {
+      var el = document.getElementById(id);
+      el.style.opacity = blocked ? '0.4' : '1';
+      el.style.pointerEvents = blocked ? 'none' : 'auto';
+    });
+  }
+
+  // Keep the orders 0..n-1 after a move or delete, writing only the rooms that changed.
+  function renumberRooms(v) {
+    var batch = db.batch(), changed = 0;
+    v.rooms.forEach(function(r, i) {
+      if (r.order !== i) { r.order = i; batch.update(roomsRef(v.slug).doc(r.id), { order: i }); changed++; }
+    });
+    return changed ? batch.commit() : Promise.resolve();
+  }
+  function reloadRoomsAfterError(v, msg) {
+    showFloorplanError(msg);
+    v.roomsLoaded = false;
+    ensureRooms(v).then(function() { if (workspaceSlug === v.slug) { renderRoomRows(); renderOverview(v); } }).catch(function() {});
+  }
+
+  document.getElementById('room-list').addEventListener('click', function(e) {
+    var row = e.target.closest('.floorplan-row');
+    var v = currentVenue();
+    if (!row || !v) return;
+    var id = row.dataset.id;
+    var i = v.rooms.findIndex(function(r) { return r.id === id; });
+    if (i < 0) return;
+    var room = v.rooms[i];
+    showFloorplanError('');
+    if (e.target.closest('.edit-room-btn')) {
+      openRoomWizard(id);
+    } else if (e.target.closest('.move-up-btn') || e.target.closest('.move-down-btn')) {
+      var j = i + (e.target.closest('.move-up-btn') ? -1 : 1);
+      if (j < 0 || j >= v.rooms.length) return;
+      v.rooms[i] = v.rooms[j]; v.rooms[j] = room;
+      renderRoomRows();
+      renumberRooms(v).then(function() { renderOverview(v); }).catch(function() {
+        reloadRoomsAfterError(v, 'Could not save. Check your connection and try again.');
+      });
+    } else if (e.target.closest('.rename-room-btn')) {
+      var name = prompt('Rename room:', room.name);
+      if (name === null) return;
+      name = name.trim().slice(0, 60);
+      if (!name || name === room.name) return;
+      roomsRef(v.slug).doc(id).update({ name: name }).then(function() {
+        room.name = name; renderRoomRows();
+      }).catch(function() { showFloorplanError('Could not save. Check your connection and try again.'); });
+    } else if (e.target.closest('.delete-room-btn')) {
+      if (!confirm('Delete this room and its floor plan?')) return;
+      roomsRef(v.slug).doc(id).delete().then(function() {
+        v.rooms = v.rooms.filter(function(r) { return r.id !== id; });
+        deleteFloorplanPhoto(room.imageUrl);
+        renderRoomRows(); renderOverview(v);
+        return renumberRooms(v);
+      }).catch(function() {
+        reloadRoomsAfterError(v, 'Could not delete that room. Check your connection and try again.');
+      });
+    }
+  });
+
+  document.getElementById('floorplan-upload-label').addEventListener('click', function() {
+    document.getElementById('floorplan-upload-input').click();
+  });
+  document.getElementById('floorplan-upload-input').addEventListener('change', function() {
+    var file = this.files[0];
+    this.value = '';
+    var v = currentVenue();
+    if (!file || !v || !v.roomsLoaded || v.rooms.length >= MAX_ROOMS) return;
+    showFloorplanError('');
+    uploadFloorplanPhoto(v.slug, file).then(function(url) {
+      var ref = roomsRef(v.slug).doc();
+      var room = { name: nextRoomName(v), order: v.rooms.length, imageUrl: url };
+      return ref.set(Object.assign({ createdAt: FS.serverTimestamp() }, room)).then(function() {
+        v.rooms.push(Object.assign({ id: ref.id }, room));
+      });
+    }).then(function() {
+      renderRoomRows(); renderOverview(v);
+    }).catch(function() {
+      showFloorplanError('Could not upload that photo. Check your connection and try again.');
+    });
+  });
+
+  // ─── FLOOR PLAN WIZARD (embedded via iframe) ───────────────────────────────
+  // The iframe is reloaded from scratch every time it's opened, rather than
+  // reused across visits, so it always starts from exactly the room's latest
+  // saved design, never leftover state from an earlier session.
+  var wizardOpenForSlug = null;
+  var wizardRoomId = null;     // the room being edited; null for a brand-new room until it first saves
+  var wizardUnsaved = false;   // the wizard reports whether its latest changes made it into the saved image
+  function wizardFrame() { return document.getElementById('floorplan-wizard-iframe'); }
+  function wizardVenue() { return venues.find(function(v) { return v.slug === wizardOpenForSlug; }); }
+  function replyToWizard(msg) { try { wizardFrame().contentWindow.postMessage(msg, '*'); } catch (e) {} }
+
+  function sendFloorplanInit() {
+    var v = wizardVenue();
+    if (!v) return;
+    var room = wizardRoomId ? v.rooms.find(function(r) { return r.id === wizardRoomId; }) : null;
+    var taken = [];
+    v.rooms.forEach(function(r) {
+      if (r.id === wizardRoomId || !r.design || !r.design.numbers) return;
+      r.design.numbers.forEach(function(n) { if (taken.indexOf(n.value) === -1) taken.push(n.value); });
+    });
+    replyToWizard({
+      type: 'floorplan-init',
+      tableNumbers: v.tables || [],
+      takenElsewhere: taken,
+      venueName: v.name,
+      suggestedName: nextRoomName(v),
+      room: room ? { id: room.id, name: room.name, design: room.design || null, imageStale: !!room.imageStale } : null
+    });
+  }
+
+  function openRoomWizard(roomId) {
+    var v = currentVenue();
+    if (!v || !v.roomsLoaded) return;
+    if (!roomId && v.rooms.length >= MAX_ROOMS) return;
+    wizardOpenForSlug = v.slug;
+    wizardRoomId = roomId || null;
+    wizardUnsaved = false;
+    wizardFrame().src = 'floorplan-wizard.html';
+    openModal('floorplan-wizard-modal');
+  }
+  document.getElementById('open-floorplan-wizard-btn').addEventListener('click', function() { openRoomWizard(null); });
+
+  function closeFloorplanWizard() {
+    closeModal('floorplan-wizard-modal');
+    wizardFrame().src = 'about:blank';
+    wizardOpenForSlug = null; wizardRoomId = null; wizardUnsaved = false;
+    renderRoomRows();
+  }
+  document.getElementById('floorplan-wizard-modal-close').addEventListener('click', function() {
+    if (wizardUnsaved && !confirm("Your latest changes aren't in the saved image yet. Close anyway?")) return;
+    closeFloorplanWizard();
+  });
+
+  wizardFrame().addEventListener('load', function() {
+    if (this.src === 'about:blank' || !this.src || !wizardOpenForSlug) return;
+    sendFloorplanInit();
+  });
+
+  // Autosave: the design only. The room's image is redrawn when the wizard says Save.
+  function handleRoomAutosave(data) {
+    var v = wizardVenue();
+    var room = v && data.roomId && data.roomId === wizardRoomId ? v.rooms.find(function(r) { return r.id === data.roomId; }) : null;
+    if (!room) { replyToWizard({ type: 'floorplan-save-failed' }); return; }
+    roomsRef(v.slug).doc(room.id).update({ design: data.design, imageStale: true }).then(function() {
+      room.design = data.design; room.imageStale = true;
+      replyToWizard({ type: 'floorplan-saved', roomId: room.id, seq: data.seq, imageUpdated: false });
+      if (workspaceSlug === v.slug) renderRoomRows();
+    }).catch(function() { replyToWizard({ type: 'floorplan-save-failed' }); });
+  }
+
+  // Save: replaces the room's image (and removes the old file), or creates the room if it's new.
+  function handleRoomSave(data) {
+    var v = wizardVenue();
+    if (!v) return;
+    var slug = v.slug;
+    fetch(data.png).then(function(r) { return r.blob(); }).then(function(blob) {
+      var ref = storage.ref('venue-maps/' + slug + '/' + generateFileId());
+      return ref.put(blob, { customMetadata: { ownerUid: currentUser.uid } });
+    }).then(function(snap) {
+      return snap.ref.getDownloadURL();
+    }).then(function(url) {
+      var existing = data.roomId ? v.rooms.find(function(r) { return r.id === data.roomId; }) : null;
+      if (existing) {
+        var oldUrl = existing.imageUrl;
+        return roomsRef(slug).doc(existing.id).update({ imageUrl: url, design: data.design, imageStale: false }).then(function() {
+          existing.imageUrl = url; existing.design = data.design; existing.imageStale = false;
+          if (oldUrl && oldUrl !== url) deleteFloorplanPhoto(oldUrl);
+          return existing;
+        });
+      }
+      var ref = roomsRef(slug).doc();
+      var fresh = { name: nextRoomName(v), order: v.rooms.length, imageUrl: url, design: data.design, imageStale: false };
+      return ref.set(Object.assign({ createdAt: FS.serverTimestamp() }, fresh)).then(function() {
+        var room = Object.assign({ id: ref.id }, fresh);
+        v.rooms.push(room);
+        wizardRoomId = room.id;
+        return room;
+      });
+    }).then(function(room) {
+      replyToWizard({ type: 'floorplan-saved', roomId: room.id, name: room.name, seq: data.seq, imageUpdated: true });
+      if (workspaceSlug === slug) { renderRoomRows(); renderOverview(v); }
+      if (data.close) closeFloorplanWizard();
+    }).catch(function() {
+      replyToWizard({ type: 'floorplan-save-failed' });
+    });
+  }
+
+  window.addEventListener('message', function(e) {
+    if (!wizardOpenForSlug || e.source !== wizardFrame().contentWindow) return;
+    var data = e.data || {};
+    if (data.type === 'floorplan-wizard-ready') sendFloorplanInit();
+    else if (data.type === 'floorplan-state') wizardUnsaved = !!data.unsaved;
+    else if (data.type === 'floorplan-autosave') handleRoomAutosave(data);
+    else if (data.type === 'floorplan-save') handleRoomSave(data);
+  });
+
   document.getElementById('save-tables-btn').addEventListener('click', function() {
-    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
+    var v = currentVenue();
     if (!v) return;
     var errorEl = document.getElementById('tables-error');
     errorEl.style.display = 'none';
@@ -1233,79 +1451,12 @@
   });
 
   function renderFloorplanRows() {
-    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
-    var urls = (v && v.mapUrls) || [];
-    document.getElementById('floorplan-wizard-btn-text').textContent = (v && v.floorPlanDesign) ? '+ Edit floor plan design' : '+ Design a floor plan';
+    var v = currentVenue();
     document.getElementById('c-tables').value = (v && v.tables || []).join(', ');
     document.getElementById('tables-error').style.display = 'none';
-    document.getElementById('floorplan-list').innerHTML = urls.map(function(url, i) {
-      return '<div class="floorplan-row" data-index="' + i + '">' +
-        '<img src="' + url + '" alt="Floor plan photo ' + (i + 1) + '">' +
-        '<div class="fp-label">Photo ' + (i + 1) + '</div>' +
-        '<button type="button" class="venue-btn move-up-btn"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-        '<button type="button" class="venue-btn move-down-btn"' + (i === urls.length - 1 ? ' disabled' : '') + '>↓</button>' +
-        '<button type="button" class="venue-btn danger remove-photo-btn">Remove</button>' +
-      '</div>';
-    }).join('');
-    var addLabel = document.getElementById('floorplan-upload-label');
-    var atMax = urls.length >= MAX_PHOTOS;
-    addLabel.style.opacity = atMax ? '0.4' : '1';
-    addLabel.style.pointerEvents = atMax ? 'none' : 'auto';
+    showFloorplanError('');
+    renderRoomRows();
   }
-  function saveFloorplanUrls(urls) {
-    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
-    if (!v) return;
-    v.mapUrls = urls;
-    db.collection('venues').doc(workspaceSlug).update({ mapUrls: urls }).then(function() {
-      renderFloorplanRows();
-      renderOverview(v);
-    }).catch(function() {
-      var errorEl = document.getElementById('floorplan-error');
-      errorEl.textContent = 'Could not save. Check your connection and try again.';
-      errorEl.style.display = 'block';
-    });
-  }
-  document.getElementById('floorplan-upload-label').addEventListener('click', function() {
-    document.getElementById('floorplan-upload-input').click();
-  });
-  document.getElementById('floorplan-upload-input').addEventListener('change', function() {
-    var file = this.files[0];
-    this.value = '';
-    if (!file || !workspaceSlug) return;
-    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
-    if (!v) return;
-    var urls = (v.mapUrls || []).slice();
-    if (urls.length >= MAX_PHOTOS) return;
-    var errorEl = document.getElementById('floorplan-error');
-    errorEl.style.display = 'none';
-    uploadFloorplanPhoto(workspaceSlug, file).then(function(url) {
-      urls.push(url);
-      saveFloorplanUrls(urls);
-    }).catch(function() {
-      errorEl.textContent = 'Could not upload that photo. Check your connection and try again.';
-      errorEl.style.display = 'block';
-    });
-  });
-  document.getElementById('floorplan-list').addEventListener('click', function(e) {
-    var row = e.target.closest('.floorplan-row');
-    if (!row) return;
-    var v = venues.find(function(v) { return v.slug === workspaceSlug; });
-    if (!v) return;
-    var urls = (v.mapUrls || []).slice();
-    var i = parseInt(row.dataset.index);
-    if (e.target.closest('.move-up-btn') && i > 0) {
-      var tmp = urls[i - 1]; urls[i - 1] = urls[i]; urls[i] = tmp;
-      saveFloorplanUrls(urls);
-    } else if (e.target.closest('.move-down-btn') && i < urls.length - 1) {
-      var tmp2 = urls[i + 1]; urls[i + 1] = urls[i]; urls[i] = tmp2;
-      saveFloorplanUrls(urls);
-    } else if (e.target.closest('.remove-photo-btn')) {
-      var removedUrl = urls[i];
-      urls.splice(i, 1);
-      saveFloorplanUrls(urls);
-      deleteFloorplanPhoto(removedUrl);
-    }
-  });
 
   // ─── QR CODE ────────────────────────────────────────────────────────────────
   function renderQrPreview() {

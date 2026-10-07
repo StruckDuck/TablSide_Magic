@@ -444,15 +444,36 @@
     if (v) {
       activeMapIndex = 0;
       renderMapViewer();
+      ensureRooms(v);
       updateSessionUI();
     }
     subscribeToVenue();
   }
 
+  // Floor plans live in each venue's rooms. A venue that hasn't been opened in
+  // the dashboard since rooms were introduced still shows its old photos.
+  function floorPlanUrls(v) {
+    if (!v) return [];
+    if (v.roomsLoaded && v.roomUrls && v.roomUrls.length) return v.roomUrls;
+    return v.mapUrls || [];
+  }
+  function ensureRooms(v) {
+    if (!v || v.roomsLoaded || v.roomsLoading) return;
+    v.roomsLoading = true;
+    db.collection('venues').doc(v.slug).collection('rooms').orderBy('order').get().then(function(snap) {
+      v.roomUrls = snap.docs.map(function(d) { return d.data().imageUrl; }).filter(Boolean);
+    }).catch(function() {
+      v.roomUrls = [];
+    }).then(function() {
+      v.roomsLoaded = true; v.roomsLoading = false;
+      if (settings.activeVenue === v.slug) renderMapViewer();
+    });
+  }
+
   function renderMapViewer() {
     var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
-    var urls = (v && v.mapUrls) || [];
-    if (!urls.length) { setMapPlaceholder('No floor plan for this venue'); return; }
+    var urls = floorPlanUrls(v);
+    if (!urls.length) { setMapPlaceholder(v && v.roomsLoaded ? 'No floor plan for this venue' : ''); return; }
     if (activeMapIndex >= urls.length) activeMapIndex = 0;
     var nav = urls.length > 1
       ? '<button type="button" class="map-nav prev" data-dir="-1">‹</button>' +
@@ -467,7 +488,7 @@
 
   function stepMap(dir) {
     var v = venues.find(function(v) { return v.slug === settings.activeVenue; });
-    var urls = (v && v.mapUrls) || [];
+    var urls = floorPlanUrls(v);
     if (!urls.length) return;
     activeMapIndex = (activeMapIndex + dir + urls.length) % urls.length;
     renderMapViewer();
@@ -495,6 +516,7 @@
           sw.value = v.slug;
           activeMapIndex = 0;
           renderMapViewer();
+          ensureRooms(v);
           updateSessionUI();
         } else {
           // Saved venue belongs to another account or no longer exists
