@@ -175,6 +175,8 @@
   .link-click-row { display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.72rem; }
   .link-click-row:last-child { border-bottom:none; }
   .link-click-row .count { color:var(--muted); font-weight:500; }
+  #stats-pdf-btn { margin-top:1.5rem; }
+  #stats-pdf-btn:disabled { opacity:0.4; cursor:default; }
 
   /* MODAL */
   .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:100; align-items:center; justify-content:center; padding:1rem; }
@@ -443,6 +445,7 @@
           <div class="overview-section-label">Link Clicks</div>
           <div id="link-clicks-list"></div>
         </div>
+        <button class="btn btn-solid" id="stats-pdf-btn" disabled>Download PDF</button>
       </div>
 
     </div>
@@ -1865,94 +1868,261 @@
     loadStats();
   }
 
+  // The numbers are worked out once, then shown on screen and put in the PDF, so the two can't disagree.
+  var lastStats = null; // what's on screen right now
+  function statsNow() { return Date.now(); }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function localDateKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function fmtDate(d) { return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+  function hourLabel(h) { return h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm'; }
+  // Days and months follow the clock on the wall where you are, not universal time.
+  // "Tonight" starts at 5am, so a show that runs past midnight is still one night.
+  function nightStart(nowMs) {
+    var d = new Date(nowMs);
+    d.setHours(5, 0, 0, 0);
+    if (nowMs < d.getTime()) d.setDate(d.getDate() - 1);
+    return d;
+  }
+
+  function computeStats(events) {
+    var scans = 0, reqs = 0, perfs = 0, cxls = 0, waits = [], hours = [], clickCounts = {}, clickTotal = 0, i;
+    for (i = 0; i < 24; i++) hours.push(0);
+    events.forEach(function(e) {
+      if (e.type === 'scan') scans++;
+      else if (e.type === 'request') { reqs++; if (e._hour != null) hours[e._hour]++; }
+      else if (e.type === 'performance') { perfs++; if (e.waitMs) waits.push(e.waitMs); }
+      else if (e.type === 'cancellation') cxls++;
+      else if (e.type === 'link_click' && e.label) { clickCounts[e.label] = (clickCounts[e.label] || 0) + 1; clickTotal++; }
+    });
+    var peakHour = null, peakCount = 0;
+    for (i = 0; i < 24; i++) { if (hours[i] > peakCount) { peakCount = hours[i]; peakHour = i; } } // the earlier hour wins a tie
+
+    // Time between one table and the next, within a single session
+    var timeline = events.filter(function(e) {
+      return (e.type === 'session_start' || e.type === 'session_end' || e.type === 'performance') && e._ms != null;
+    }).sort(function(a, b) { return a._ms - b._ms; });
+    var gaps = [], sessionOpen = false, lastPerf = null;
+    timeline.forEach(function(e) {
+      if (e.type === 'session_start') { sessionOpen = true; lastPerf = null; }
+      else if (e.type === 'session_end') { sessionOpen = false; lastPerf = null; }
+      else if (e.type === 'performance' && sessionOpen) {
+        if (lastPerf != null) gaps.push(e._ms - lastPerf);
+        lastPerf = e._ms;
+      }
+    });
+    function mean(a) { return a.length ? a.reduce(function(x, y) { return x + y; }, 0) / a.length : null; }
+
+    var clicks = Object.keys(clickCounts).sort(function(a, b) { return clickCounts[b] - clickCounts[a]; })
+      .map(function(l) { return { label: l, count: clickCounts[l] }; });
+    return {
+      scans: scans, reqs: reqs, perfs: perfs, cxls: cxls,
+      conversion: scans > 0 ? Math.round(reqs / scans * 100) : null,
+      avgWaitMs: mean(waits), avgVisitMs: mean(gaps), peakHour: peakHour,
+      hours: hours, clicks: clicks,
+      active: scans + reqs + perfs + cxls + clickTotal > 0
+    };
+  }
+
+  function renderStats(st) {
+    document.getElementById('stat-performances').textContent = st.perfs;
+    document.getElementById('stat-total-scans').textContent = st.scans;
+    document.getElementById('stat-cancellations').textContent = st.cxls;
+    document.getElementById('stat-conversion').textContent = st.conversion != null ? st.conversion + '%' : '—';
+    document.getElementById('stat-avg-wait').textContent = st.avgWaitMs != null ? fmtTime(st.avgWaitMs) : '—';
+    document.getElementById('stat-peak').textContent = st.peakHour != null ? hourLabel(st.peakHour) : '—';
+    document.getElementById('stat-avg-visit').textContent = st.avgVisitMs != null ? fmtTime(st.avgVisitMs) : '—';
+    var clickSection = document.getElementById('link-clicks-section');
+    if (st.clicks.length) {
+      document.getElementById('link-clicks-list').innerHTML = st.clicks.map(function(c) {
+        return '<div class="link-click-row"><span>' + escapeHtml(c.label) + '</span><span class="count">' + c.count + '</span></div>';
+      }).join('');
+      clickSection.style.display = 'block';
+    } else {
+      clickSection.style.display = 'none';
+    }
+    document.getElementById('stats-pdf-btn').disabled = !st.active;
+  }
+
   function loadStats() {
     if (!workspaceSlug) return;
-    db.collection('venueEvents').doc(workspaceSlug).collection('events').get()
+    var slug = workspaceSlug;
+    db.collection('venueEvents').doc(slug).collection('events').get()
       .then(function(snap) {
+        if (slug !== workspaceSlug) return; // moved on to another venue while this was loading
         var all = snap.docs.map(function(d) {
           var data = d.data();
           var ts = (data.timestamp && data.timestamp.toDate) ? data.timestamp.toDate() : null;
-          data._date = ts ? ts.toISOString().split('T')[0] : null;
-          data._month = ts ? ts.toISOString().slice(0, 7) : null;
+          data._date = ts ? localDateKey(ts) : null;
+          data._month = ts ? localDateKey(ts).slice(0, 7) : null;
           data._hour = ts ? ts.getHours() : null;
           data._ms = ts ? ts.getTime() : null;
           return data;
         });
-        var today = new Date().toISOString().split('T')[0];
         var months = [];
         all.forEach(function(e) { if (e._month && months.indexOf(e._month) < 0) months.push(e._month); });
         months.sort().reverse();
 
         var sel = document.getElementById('month-select');
+        function monthName(m, locale) {
+          return new Date(parseInt(m.split('-')[0]), parseInt(m.split('-')[1]) - 1).toLocaleString(locale, { month: 'long', year: 'numeric' });
+        }
         if (months.length) {
           var cur = sel.value;
           sel.innerHTML = months.map(function(m) {
-            var d = new Date(parseInt(m.split('-')[0]), parseInt(m.split('-')[1]) - 1);
-            var lbl = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-            return '<option value="' + m + '"' + (m === cur ? ' selected' : '') + '>' + lbl + '</option>';
+            return '<option value="' + m + '"' + (m === cur ? ' selected' : '') + '>' + monthName(m, 'default') + '</option>';
           }).join('');
         }
 
-        var events = all;
-        if (currentTab === 'tonight') events = all.filter(function(e) { return e._date === today; });
-        else if (currentTab === 'month') { var m = sel.value || months[0]; events = all.filter(function(e) { return e._month === m; }); }
-
-        var scans = events.filter(function(e) { return e.type === 'scan'; }).length;
-        var reqs  = events.filter(function(e) { return e.type === 'request'; }).length;
-        var perfs = events.filter(function(e) { return e.type === 'performance'; }).length;
-        var cxls  = events.filter(function(e) { return e.type === 'cancellation'; }).length;
-        var waits = events.filter(function(e) { return e.type === 'performance' && e.waitMs; }).map(function(e) { return e.waitMs; });
-
-        document.getElementById('stat-performances').textContent = perfs;
-        document.getElementById('stat-total-scans').textContent = scans;
-        document.getElementById('stat-cancellations').textContent = cxls;
-        document.getElementById('stat-conversion').textContent = scans > 0 ? Math.round(reqs / scans * 100) + '%' : '—';
-
-        if (waits.length) {
-          var avg = waits.reduce(function(a, b) { return a + b; }, 0) / waits.length;
-          document.getElementById('stat-avg-wait').textContent = fmtTime(avg);
-        } else document.getElementById('stat-avg-wait').textContent = '—';
-
-        var reqHours = events.filter(function(e) { return e.type === 'request' && e._hour != null; });
-        if (reqHours.length) {
-          var hc = {};
-          reqHours.forEach(function(e) { hc[e._hour] = (hc[e._hour] || 0) + 1; });
-          var ph = parseInt(Object.keys(hc).sort(function(a,b){return hc[b]-hc[a];})[0]);
-          document.getElementById('stat-peak').textContent = ph === 0 ? '12am' : ph < 12 ? ph + 'am' : ph === 12 ? '12pm' : (ph-12) + 'pm';
-        } else document.getElementById('stat-peak').textContent = '—';
-
-        var timeline = events.filter(function(e) {
-          return (e.type === 'session_start' || e.type === 'session_end' || e.type === 'performance') && e._ms != null;
-        }).sort(function(a, b) { return a._ms - b._ms; });
-        var gaps = [], sessionOpen = false, lastPerf = null;
-        timeline.forEach(function(e) {
-          if (e.type === 'session_start') { sessionOpen = true; lastPerf = null; }
-          else if (e.type === 'session_end') { sessionOpen = false; lastPerf = null; }
-          else if (e.type === 'performance' && sessionOpen) {
-            if (lastPerf != null) gaps.push(e._ms - lastPerf);
-            lastPerf = e._ms;
-          }
-        });
-        if (gaps.length) {
-          var avgVisit = gaps.reduce(function(a, b) { return a + b; }, 0) / gaps.length;
-          document.getElementById('stat-avg-visit').textContent = fmtTime(avgVisit);
-        } else document.getElementById('stat-avg-visit').textContent = '—';
-
-        var clicks = events.filter(function(e) { return e.type === 'link_click' && e.label; });
-        var clickCounts = {};
-        clicks.forEach(function(e) { clickCounts[e.label] = (clickCounts[e.label] || 0) + 1; });
-        var labels = Object.keys(clickCounts).sort(function(a, b) { return clickCounts[b] - clickCounts[a]; });
-        var clickSection = document.getElementById('link-clicks-section');
-        if (labels.length) {
-          document.getElementById('link-clicks-list').innerHTML = labels.map(function(l) {
-            return '<div class="link-click-row"><span>' + escapeHtml(l) + '</span><span class="count">' + clickCounts[l] + '</span></div>';
-          }).join('');
-          clickSection.style.display = 'block';
+        var events = all, period;
+        if (currentTab === 'tonight') {
+          var start = nightStart(statsNow());
+          events = all.filter(function(e) { return e._ms != null && e._ms >= start.getTime(); });
+          period = { label: 'Tonight, ' + fmtDate(start), file: localDateKey(start) };
+        } else if (currentTab === 'month') {
+          var m = sel.value || months[0];
+          events = all.filter(function(e) { return e._month === m; });
+          period = m ? { label: monthName(m, 'default'), file: monthName(m, 'en-US').toLowerCase().replace(/[^a-z0-9]+/g, '-') }
+                     : { label: 'No month selected', file: 'month' };
         } else {
-          clickSection.style.display = 'none';
+          var firstMs = null;
+          all.forEach(function(e) { if (e._ms != null && (firstMs == null || e._ms < firstMs)) firstMs = e._ms; });
+          period = { label: firstMs != null ? 'All time, since ' + fmtDate(new Date(firstMs)) : 'All time', file: 'all-time' };
         }
+
+        var v = venues.find(function(v) { return v.slug === slug; });
+        lastStats = { stats: computeStats(events), period: period, venueName: v ? v.name : slug };
+        renderStats(lastStats.stats);
       }).catch(function() {});
   }
+
+  // ─── STATS REPORT (PDF) ─────────────────────────────────────────────────────
+  // One page for a venue manager: who, when, the numbers, and when guests ask.
+  function pdfSafe(s) { return String(s || '').replace(/[^\x20-\x7E\xA0-\xFF\u2018\u2019\u201C\u201D\u2013\u2022\u2026]/g, '').replace(/\s+/g, ' ').trim(); }
+  function pdfSlug(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'venue'; }
+  function statsPdfName(info) { return pdfSlug(info.venueName) + '-stats-' + info.period.file + '.pdf'; }
+
+  function buildStatsPdf(info) {
+    var st = info.stats;
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'letter' });
+    var PW = 215.9, PH = 279.4, M = 20, CW = PW - 2 * M;
+    var MAROON = [99, 0, 0], INK = [26, 22, 18], MUTED = [143, 125, 116], RULE = [221, 204, 192], SOFT = [208, 176, 176];
+    function ink(c) { doc.setTextColor(c[0], c[1], c[2]); }
+    function line(c, w) { doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(w); }
+    function fill(c) { doc.setFillColor(c[0], c[1], c[2]); }
+    function spaced(txt, x, y, cs, opts) { doc.setCharSpace(cs); doc.text(txt, x, y, opts); doc.setCharSpace(0); }
+    function fit(txt, maxW) { // shorten with an ellipsis until it fits the current font
+      txt = pdfSafe(txt);
+      if (doc.getTextWidth(txt) <= maxW) return txt;
+      while (txt.length > 1 && doc.getTextWidth(txt + '...') > maxW) txt = txt.slice(0, -1);
+      return txt.replace(/\s+$/, '') + '...';
+    }
+    function heading(txt, y) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); ink(MAROON);
+      spaced(txt, M, y, 0.5);
+      line(RULE, 0.3); doc.line(M, y + 2.5, PW - M, y + 2.5);
+    }
+    var y = M + 4;
+
+    // Header: period, venue, who performed, when this was made
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); ink(MAROON);
+    spaced(pdfSafe(info.period.label).toUpperCase(), M, y, 0.5);
+    y += 11;
+    doc.setFont('times', 'normal'); ink(INK);
+    var size = 30; doc.setFontSize(size);
+    var venueName = pdfSafe(info.venueName) || 'Venue';
+    while (size > 16 && doc.getTextWidth(venueName) > CW) { size -= 1; doc.setFontSize(size); }
+    doc.text(fit(venueName, CW), M, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); ink(MUTED);
+    var performer = pdfSafe(info.performer);
+    if (performer) doc.text(fit('Performed by ' + performer, CW - 50), M, y);
+    doc.text('Generated ' + fmtDate(info.generated), PW - M, y, { align: 'right' });
+    y += 5;
+    line(MAROON, 0.5); doc.line(M, y, PW - M, y);
+    y += 10;
+
+    // The numbers: what the show did, then what the guests did
+    var na = 'n/a';
+    var rows = [
+      [['Tables performed', String(st.perfs)],
+       ['Avg wait time', st.avgWaitMs != null ? fmtTime(st.avgWaitMs) : na],
+       ['Avg table visit', st.avgVisitMs != null ? fmtTime(st.avgVisitMs) : na],
+       ['Peak request hour', st.peakHour != null ? hourLabel(st.peakHour) : na]],
+      [['Total scans', String(st.scans)],
+       ['Scan to request rate', st.conversion != null ? st.conversion + '%' : na],
+       ['Cancellations', String(st.cxls)]]
+    ];
+    var gap = 5, cw = (CW - gap * 3) / 4, ch = 30;
+    rows.forEach(function(row) {
+      row.forEach(function(card, i) {
+        var x = M + i * (cw + gap);
+        line(RULE, 0.3); doc.rect(x, y, cw, ch);
+        doc.setFont('times', 'normal'); doc.setFontSize(24); ink(MAROON);
+        doc.text(card[1], x + 5, y + 13.5);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); ink(MUTED);
+        doc.setCharSpace(0.25);
+        doc.splitTextToSize(card[0].toUpperCase(), (cw - 10) * 0.86).slice(0, 2).forEach(function(ln, k) { doc.text(ln, x + 5, y + 20.5 + k * 3.8); });
+        doc.setCharSpace(0);
+      });
+      y += ch + gap;
+    });
+    y += 5;
+
+    // Requests by hour, over the span of hours that had any (at least six, so one busy hour isn't a lone bar)
+    var hasChart = st.reqs > 0 && Math.max.apply(null, st.hours) > 0;
+    var chartBlock = hasChart ? 64 : 0;
+
+    // Link clicks, as many rows as the page has room for
+    if (st.clicks.length) {
+      heading('LINK CLICKS', y);
+      y += 9;
+      var rowH = 7.5, room = Math.max(1, Math.floor((PH - M - chartBlock - y) / rowH));
+      var show = st.clicks, more = 0;
+      if (show.length > room) { more = show.length - (room - 1); show = show.slice(0, room - 1); }
+      show.forEach(function(c) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); ink(INK);
+        doc.text(fit(c.label, CW - 25), M, y);
+        doc.setFont('helvetica', 'bold'); ink(MUTED);
+        doc.text(String(c.count), PW - M, y, { align: 'right' });
+        line(RULE, 0.2); doc.line(M, y + 2.6, PW - M, y + 2.6);
+        y += rowH;
+      });
+      if (more) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); ink(MUTED); doc.text('and ' + more + ' more', M, y); y += rowH; }
+      y += 6;
+    }
+
+    if (hasChart) {
+      heading('REQUESTS BY HOUR', y);
+      y += 8;
+      var first = 23, last = 0;
+      st.hours.forEach(function(n, h) { if (n > 0) { if (h < first) first = h; if (h > last) last = h; } });
+      var lo = Math.max(0, first - 1), hi = Math.min(23, last + 1);
+      while (hi - lo + 1 < 6) { if (lo > 0) lo--; if (hi - lo + 1 < 6 && hi < 23) hi++; }
+      var n = hi - lo + 1, slot = CW / n, bw = Math.min(slot * 0.62, 14);
+      var top = Math.max.apply(null, st.hours), plotH = 34, base = y + plotH + 6;
+      for (var h = lo; h <= hi; h++) {
+        var count = st.hours[h], x = M + (h - lo) * slot + (slot - bw) / 2;
+        if (count > 0) {
+          var bh = Math.max(1.2, count / top * plotH);
+          fill(count === top ? MAROON : SOFT); doc.rect(x, base - bh, bw, bh, 'F');
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(8); ink(INK);
+          doc.text(String(count), x + bw / 2, base - bh - 1.6, { align: 'center' });
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); ink(MUTED);
+        var hl = hourLabel(h);
+        doc.text(n <= 12 ? hl : hl.replace('m', ''), x + bw / 2, base + 4.6, { align: 'center' });
+      }
+      line(MUTED, 0.3); doc.line(M, base, PW - M, base);
+    }
+    return doc;
+  }
+
+  document.getElementById('stats-pdf-btn').addEventListener('click', function() {
+    if (!lastStats || !lastStats.stats.active) return;
+    if (!window.jspdf) { alert('Could not create the PDF. Check your connection and try again.'); return; }
+    var info = Object.assign({}, lastStats, { performer: performerName, generated: new Date(statsNow()) });
+    buildStatsPdf(info).save(statsPdfName(info));
+  });
 
   // ─── PERFORMER INFO MODAL ───────────────────────────────────────────────────
   document.getElementById('performer-info-link').addEventListener('click', function() { openModal('performer-modal'); });
@@ -1962,7 +2132,9 @@
   var performerRemoveLogo = false;
 
   // The header shows the performer's name when one is set, and nothing otherwise.
+  var performerName = '';
   function setHeaderName(name) {
+    performerName = name || '';
     var el = document.getElementById('header-performer-name');
     el.textContent = name || '';
     el.style.display = name ? '' : 'none';
