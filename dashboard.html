@@ -18,7 +18,7 @@
     --text:#1a1612; --muted:#8f7d74; --gold:#a3854f; --teal:#630000;
     --plum:#d83636; --red:#a01a1a; --cream:#eae1d7;
   }
-  html, body { height:100%; }
+  html, body { height:auto; min-height:100%; } /* the page is as tall as its content, so the sticky header stays pinned for the whole scroll */
   body { font-family:'Raleway',sans-serif; background:var(--bg); color:var(--text); }
   body.pending { visibility:hidden; }
   a { color:inherit; }
@@ -201,10 +201,10 @@
   button, .sidebar-nav-item, .stats-tab, label { touch-action:manipulation; }
   :root { --header-h:61px; }                 /* the real height is measured by script */
   .fp-actions { display:contents; }          /* on a desktop the room buttons sit on the row exactly as before */
+  .build-stamp { font-size:0.62rem; color:var(--muted); letter-spacing:0.08em; text-align:center; padding-top:0.4rem; }
   .touch-note { display:none; font-size:0.72rem; color:var(--muted); line-height:1.6; padding-top:0.75rem; max-width:560px; }
 
   @media (max-width:900px) {
-    html, body { height:auto; min-height:100%; }
     .app-header { padding:0.6rem max(1rem, env(safe-area-inset-right)) 0.6rem max(1rem, env(safe-area-inset-left)); padding-top:calc(0.6rem + env(safe-area-inset-top)); }
     .header-actions { gap:0.9rem; }
     .home-wrap { padding:1.5rem max(1rem, env(safe-area-inset-right)) 3rem max(1rem, env(safe-area-inset-left)); }
@@ -285,6 +285,7 @@
     .modal-close { min-width:44px; min-height:44px; font-size:1.6rem; }
     .saved-msg, .error-msg { font-size:0.76rem; }
     .overview-id, .touch-note { font-size:0.8rem; }
+    .build-stamp { font-size:0.76rem; }
     .file-label, .file-label span { font-size:0.78rem; }
     /* a few notes carry their own small size written into the page: on a touch screen, lift them too */
     [style*="font-size:0.6"], [style*="font-size:0.7"], [style*="font-size: 0.6"], [style*="font-size: 0.7"] { font-size:0.78rem !important; }
@@ -543,12 +544,12 @@
         <div class="month-row" id="month-row"><select id="month-select"></select></div>
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-value" id="stat-performances">0</div><div class="stat-label">Tables performed</div></div>
-          <div class="stat-card"><div class="stat-value" id="stat-conversion">—</div><div class="stat-label">Scan to request rate</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-conversion">n/a</div><div class="stat-label">Scan to request rate</div></div>
           <div class="stat-card"><div class="stat-value" id="stat-cancellations">0</div><div class="stat-label">Cancellations</div></div>
-          <div class="stat-card"><div class="stat-value" id="stat-avg-wait">—</div><div class="stat-label">Avg wait time</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-avg-wait">n/a</div><div class="stat-label">Avg wait time</div></div>
           <div class="stat-card"><div class="stat-value" id="stat-total-scans">0</div><div class="stat-label">Total scans</div></div>
-          <div class="stat-card"><div class="stat-value" id="stat-peak">—</div><div class="stat-label">Peak request hour</div></div>
-          <div class="stat-card"><div class="stat-value" id="stat-avg-visit">—</div><div class="stat-label">Avg table visit</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-peak">n/a</div><div class="stat-label">Peak request hour</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-avg-visit">n/a</div><div class="stat-label">Avg table visit</div></div>
         </div>
         <div id="link-clicks-section" style="display:none;max-width:400px;">
           <div class="overview-section-label">Link Clicks</div>
@@ -604,6 +605,7 @@
       <button class="btn btn-solid" id="save-performer-btn" style="margin-top:0.5rem;">Save Performer Info</button>
       <div class="saved-msg" id="performer-saved">Saved</div>
       <div class="error-msg" id="performer-error" style="display:none;"></div>
+      <div class="build-stamp">Version <span id="build-stamp"></span></div>
     </div>
   </div>
 </div>
@@ -622,6 +624,45 @@
 </div>
 
 <script>
+  // ─── NEW-VERSION NOTICE ─────────────────────────────────────────────────────
+  // A tab left open keeps running the version it loaded. Every delivery gets a new BUILD here and in
+  // version.json, and this checks now and then whether a newer one is out. It only offers a refresh:
+  // it never reloads by itself, so a show is never interrupted.
+  var BUILD = '2026-10-08-1';
+  (function() {
+    var shown = false, lastCheck = 0, snoozeUntil = 0;
+    var stamp = document.getElementById('build-stamp'); if (stamp) stamp.textContent = BUILD;
+    function check() {
+      if (shown || typeof fetch !== 'function') return;
+      var now = Date.now();
+      if (now < snoozeUntil || now - lastCheck < 30000) return;   // at most one look every 30 seconds
+      lastCheck = now;
+      fetch('version.json?t=' + now, { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(v) { if (v && typeof v.build === 'string' && v.build !== BUILD) show(v.build); })
+        .catch(function() {});                                    // offline, or no version.json yet: say nothing
+    }
+    function show(newBuild) {
+      shown = true;
+      var bar = document.createElement('div');
+      bar.id = 'update-banner'; bar.setAttribute('role', 'status');
+      bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:300;display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom));background:#1a1612;color:#eae1d7;font:500 0.8rem Raleway,sans-serif;letter-spacing:0.04em;box-shadow:0 -4px 14px rgba(0,0,0,0.25);';
+      var msg = document.createElement('span'); msg.textContent = 'A new version is ready.';
+      var go = document.createElement('button'); go.type = 'button'; go.id = 'update-refresh-btn'; go.textContent = 'Refresh';
+      go.style.cssText = 'background:#a3854f;color:#fff;border:none;min-height:44px;padding:0 1.1rem;font:inherit;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;';
+      var no = document.createElement('button'); no.type = 'button'; no.id = 'update-dismiss-btn'; no.setAttribute('aria-label', 'Dismiss'); no.innerHTML = '&times;';
+      no.style.cssText = 'background:none;border:none;color:#eae1d7;font-size:1.5rem;min-width:44px;min-height:44px;cursor:pointer;';
+      go.addEventListener('click', function() { var u = new URL(location.href); u.searchParams.set('v', newBuild); location.replace(u.toString()); });
+      no.addEventListener('click', function() { bar.remove(); shown = false; snoozeUntil = Date.now() + 30 * 60000; });
+      bar.appendChild(msg); bar.appendChild(go); bar.appendChild(no); document.body.appendChild(bar);
+    }
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) check(); });
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    setInterval(check, 10 * 60000);
+    setTimeout(check, 4000);                                      // shortly after loading too: the page itself may have come from an old cache
+  })();
+
   // ─── FIREBASE ───────────────────────────────────────────────────────────────
   firebase.initializeApp({
     apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
@@ -1579,7 +1620,7 @@
     wizardOpenForSlug = v.slug;
     wizardRoomId = roomId || null;
     wizardUnsaved = false;
-    wizardFrame().src = 'floorplan-wizard.html';
+    wizardFrame().src = 'floorplan-wizard.html?b=' + encodeURIComponent(BUILD); // a new build always fetches a fresh copy
     openModal('floorplan-wizard-modal');
   }
   document.getElementById('open-floorplan-wizard-btn').addEventListener('click', function() { openRoomWizard(null); });
@@ -1954,7 +1995,7 @@
     var entries = signageEntries();
     var pages = Math.ceil(entries.length / layout.perPage);
     document.getElementById('sg-layout-info').textContent =
-      layout.perPage + ' per sheet — ' + pages + ' page' + (pages === 1 ? '' : 's') + ' for ' + entries.length + ' cards.';
+      layout.perPage + ' per sheet, ' + pages + ' page' + (pages === 1 ? '' : 's') + ' for ' + entries.length + ' cards.';
   }
 
   document.getElementById('sg-type').addEventListener('change', function() { populateSignageSizeOptions(); updateSignageUI(); });
@@ -2148,10 +2189,10 @@
     document.getElementById('stat-performances').textContent = st.perfs;
     document.getElementById('stat-total-scans').textContent = st.scans;
     document.getElementById('stat-cancellations').textContent = st.cxls;
-    document.getElementById('stat-conversion').textContent = st.conversion != null ? st.conversion + '%' : '—';
-    document.getElementById('stat-avg-wait').textContent = st.avgWaitMs != null ? fmtTime(st.avgWaitMs) : '—';
-    document.getElementById('stat-peak').textContent = st.peakHour != null ? hourLabel(st.peakHour) : '—';
-    document.getElementById('stat-avg-visit').textContent = st.avgVisitMs != null ? fmtTime(st.avgVisitMs) : '—';
+    document.getElementById('stat-conversion').textContent = st.conversion != null ? st.conversion + '%' : 'n/a';
+    document.getElementById('stat-avg-wait').textContent = st.avgWaitMs != null ? fmtTime(st.avgWaitMs) : 'n/a';
+    document.getElementById('stat-peak').textContent = st.peakHour != null ? hourLabel(st.peakHour) : 'n/a';
+    document.getElementById('stat-avg-visit').textContent = st.avgVisitMs != null ? fmtTime(st.avgVisitMs) : 'n/a';
     var clickSection = document.getElementById('link-clicks-section');
     if (st.clicks.length) {
       document.getElementById('link-clicks-list').innerHTML = st.clicks.map(function(c) {

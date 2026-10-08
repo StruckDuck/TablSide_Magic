@@ -170,7 +170,7 @@
 <div class="heading-bar" id="heading-bar">
   <div>
     <div class="heading-bar-label">Heading to</div>
-    <div class="heading-bar-table" id="heading-bar-table">—</div>
+    <div class="heading-bar-table" id="heading-bar-table"></div>
   </div>
   <div class="heading-bar-timer" id="heading-bar-timer"></div>
 </div>
@@ -210,6 +210,7 @@
     <button class="venue-btn" id="enable-push-btn">Enable Notifications</button>
     <div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;" id="push-status"></div>
   </div>
+  <div style="padding:0.75rem 1rem;text-align:center;font-size:0.62rem;color:var(--muted);letter-spacing:0.08em;">Version <span id="build-stamp"></span></div>
 </div>
 
 <div class="modal-overlay" id="push-prompt-modal">
@@ -227,6 +228,45 @@
 </div>
 
 <script>
+  // ─── NEW-VERSION NOTICE ─────────────────────────────────────────────────────
+  // A tab left open keeps running the version it loaded. Every delivery gets a new BUILD here and in
+  // version.json, and this checks now and then whether a newer one is out. It only offers a refresh:
+  // it never reloads by itself, so a show is never interrupted.
+  var BUILD = '2026-10-08-1';
+  (function() {
+    var shown = false, lastCheck = 0, snoozeUntil = 0;
+    var stamp = document.getElementById('build-stamp'); if (stamp) stamp.textContent = BUILD;
+    function check() {
+      if (shown || typeof fetch !== 'function') return;
+      var now = Date.now();
+      if (now < snoozeUntil || now - lastCheck < 30000) return;   // at most one look every 30 seconds
+      lastCheck = now;
+      fetch('version.json?t=' + now, { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(v) { if (v && typeof v.build === 'string' && v.build !== BUILD) show(v.build); })
+        .catch(function() {});                                    // offline, or no version.json yet: say nothing
+    }
+    function show(newBuild) {
+      shown = true;
+      var bar = document.createElement('div');
+      bar.id = 'update-banner'; bar.setAttribute('role', 'status');
+      bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:300;display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.55rem 1rem calc(0.55rem + env(safe-area-inset-bottom));background:#1a1612;color:#eae1d7;font:500 0.8rem Raleway,sans-serif;letter-spacing:0.04em;box-shadow:0 -4px 14px rgba(0,0,0,0.25);';
+      var msg = document.createElement('span'); msg.textContent = 'A new version is ready.';
+      var go = document.createElement('button'); go.type = 'button'; go.id = 'update-refresh-btn'; go.textContent = 'Refresh';
+      go.style.cssText = 'background:#a3854f;color:#fff;border:none;min-height:44px;padding:0 1.1rem;font:inherit;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;cursor:pointer;';
+      var no = document.createElement('button'); no.type = 'button'; no.id = 'update-dismiss-btn'; no.setAttribute('aria-label', 'Dismiss'); no.innerHTML = '&times;';
+      no.style.cssText = 'background:none;border:none;color:#eae1d7;font-size:1.5rem;min-width:44px;min-height:44px;cursor:pointer;';
+      go.addEventListener('click', function() { var u = new URL(location.href); u.searchParams.set('v', newBuild); location.replace(u.toString()); });
+      no.addEventListener('click', function() { bar.remove(); shown = false; snoozeUntil = Date.now() + 30 * 60000; });
+      bar.appendChild(msg); bar.appendChild(go); bar.appendChild(no); document.body.appendChild(bar);
+    }
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) check(); });
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    setInterval(check, 10 * 60000);
+    setTimeout(check, 4000);                                      // shortly after loading too: the page itself may have come from an old cache
+  })();
+
   // ─── FIREBASE ───────────────────────────────────────────────────────────────
   firebase.initializeApp({
     apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
@@ -813,7 +853,7 @@
     var el = document.createElement('div');
     el.className = 'cancel-notice';
     el.setAttribute('data-cancel-id', id);
-    el.textContent = label + ' — Cancelled Request';
+    el.textContent = label + ': Cancelled Request';
     document.getElementById('cancel-notices').appendChild(el);
     setTimeout(function() {
       el.style.opacity = '0';
@@ -866,7 +906,7 @@
           '</div>' +
           (isTop ? '<button class="on-my-way-btn" data-id="' + entry.id + '" data-label="' + entry.label + '" data-requested="' + (entry.requestedAt || '') + '">On my way</button>' : '');
       } else {
-        div.innerHTML = '<div class="entry-left"><div class="entry-name scan">' + entry.label + ' — Scan</div></div>';
+        div.innerHTML = '<div class="entry-left"><div class="entry-name scan">' + entry.label + ': Scan</div></div>';
       }
       list.appendChild(div);
     });
