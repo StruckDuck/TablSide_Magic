@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>TablSide billing test (temporary)</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#f5efe9; color:#1a1612; margin:0; padding:1.5rem; max-width:640px; }
+  h1 { font-size:1.2rem; margin:0 0 0.25rem; }
+  .note { font-size:0.8rem; color:#8f7d74; margin-bottom:1.25rem; line-height:1.5; }
+  .box { background:#fff; border:1px solid #ddccc0; padding:1rem; margin-bottom:1rem; }
+  .label { font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:#8f7d74; margin-bottom:0.4rem; }
+  button { font:inherit; font-size:0.85rem; padding:0.6rem 1rem; margin:0 0.4rem 0.5rem 0; border:1px solid #630000; background:#630000; color:#fff; cursor:pointer; }
+  button.plain { background:#fff; color:#630000; }
+  button:disabled { opacity:0.4; cursor:default; }
+  pre { margin:0; font-size:0.78rem; white-space:pre-wrap; word-break:break-word; }
+  #uid { font-family: ui-monospace, monospace; font-size:0.8rem; word-break:break-all; }
+</style>
+</head>
+<body>
+<h1>TablSide billing test</h1>
+<div class="note">A temporary page for trying out billing before the real screens exist. It is not linked from anywhere. Delete it from the repo when billing is finished.</div>
+
+<div class="box" id="who-box">
+  <div class="label">Signed in as</div>
+  <div id="who">Checking...</div>
+  <div id="uid"></div>
+  <div style="margin-top:0.5rem;"><button class="plain" id="copy-uid-btn" style="display:none;">Copy my user id</button></div>
+</div>
+
+<div class="box">
+  <div class="label">Try it</div>
+  <button id="seats-btn" disabled>Check founding seats</button>
+  <button id="checkout-btn" disabled>Start checkout</button>
+  <button id="portal-btn" disabled>Open billing portal</button>
+</div>
+
+<div class="box">
+  <div class="label">My billing record (updates live)</div>
+  <pre id="record">Waiting for sign-in...</pre>
+</div>
+
+<div class="box">
+  <div class="label">What happened</div>
+  <pre id="log"></pre>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyA-gHybTx4xZayMGPe7EqujnEEQmYEmwTg",
+    authDomain: "tablside-magic.firebaseapp.com",
+    projectId: "tablside-magic",
+    storageBucket: "tablside-magic.firebasestorage.app",
+    messagingSenderId: "209355723420",
+    appId: "1:209355723420:web:c4bf8aeab08cc425135359"
+  });
+  var db = firebase.firestore();
+  db.settings({ experimentalAutoDetectLongPolling: true });
+  var functions = firebase.app().functions('us-central1');
+
+  var HINTS = {
+    'sign-in-required': 'You need to be signed in.',
+    'already-subscribed': 'This account already has access (active, trial, payment retrying, or comped), so there is nothing to buy.',
+    'founding-full': 'All founding seats are taken. Raise foundingCap in the Firestore document config/billing to open more.',
+    'no-customer': 'This account has never started a payment, so there is no billing page to open yet.',
+    'billing-unavailable': 'Stripe could not be reached or refused the request. Check the function logs.'
+  };
+
+  function log(msg) {
+    var el = document.getElementById('log');
+    el.textContent = new Date().toLocaleTimeString() + '  ' + msg + '\n' + el.textContent;
+  }
+  function explain(err) {
+    var code = (err && err.message) || String(err);
+    return code + (HINTS[code] ? '  (' + HINTS[code] + ')' : '');
+  }
+  function enable(on) {
+    ['seats-btn', 'checkout-btn', 'portal-btn'].forEach(function(id) { document.getElementById(id).disabled = !on; });
+  }
+
+  var unsubscribe = null;
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    if (!user) {
+      document.getElementById('who').innerHTML = 'Not signed in. <a href="login.html">Sign in here</a>, then open this page again.';
+      document.getElementById('uid').textContent = '';
+      document.getElementById('copy-uid-btn').style.display = 'none';
+      document.getElementById('record').textContent = 'Sign in first.';
+      enable(false);
+      return;
+    }
+    document.getElementById('who').textContent = user.email || '(no email on this account)';
+    document.getElementById('uid').textContent = user.uid;
+    document.getElementById('copy-uid-btn').style.display = '';
+    enable(true);
+    unsubscribe = db.collection('billing').doc(user.uid).onSnapshot(function(snap) {
+      document.getElementById('record').textContent = snap.exists
+        ? JSON.stringify(snap.data(), function(k, v) { return v && v.toDate ? v.toDate().toISOString() : v; }, 2)
+        : 'No billing record yet. (That is normal before the first payment.)';
+    }, function(err) {
+      document.getElementById('record').textContent = 'Could not read it: ' + err.message;
+    });
+  });
+
+  document.getElementById('copy-uid-btn').addEventListener('click', function() {
+    var uid = document.getElementById('uid').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(uid).then(function() { log('Copied your user id.'); });
+  });
+
+  document.getElementById('seats-btn').addEventListener('click', function() {
+    functions.httpsCallable('getFoundingSeats')().then(function(r) {
+      log('Founding seats: ' + r.data.open + ' open of ' + r.data.cap + ' (' + r.data.taken + ' taken).');
+    }).catch(function(e) { log('Seats failed: ' + explain(e)); });
+  });
+
+  document.getElementById('checkout-btn').addEventListener('click', function() {
+    log('Asking for a checkout page...');
+    functions.httpsCallable('createCheckoutSession')().then(function(r) {
+      log('Going to Stripe. Use test card 4242 4242 4242 4242, any future date, any CVC and ZIP.');
+      window.location.href = r.data.url;
+    }).catch(function(e) { log('Checkout failed: ' + explain(e)); });
+  });
+
+  document.getElementById('portal-btn').addEventListener('click', function() {
+    log('Asking for the billing portal...');
+    functions.httpsCallable('createPortalSession')().then(function(r) {
+      window.location.href = r.data.url;
+    }).catch(function(e) { log('Portal failed: ' + explain(e)); });
+  });
+</script>
+</body>
+</html>
