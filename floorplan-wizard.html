@@ -183,6 +183,7 @@
   var aspect = '16:9';
   var startAspect = '16:9';   // what's picked on the start screen
   var renderScale = 1;        // 2 while drawing a sharper copy for export
+  var renderingOutput = false; // true while making the saved image or the export: the grid is only an editing aid, so it stays out of those
 
   // ─── STATE ──────────────────────────────────────────────────────────────────
   var state = {
@@ -194,10 +195,15 @@
   var imageTransform = { x: 0, y: 0, scale: 1 }; // pan/zoom for crop mode
   var tableNumbers = [];
   var currentTool = 'move';
-  var gridSnap = false;
-  var GRID = 24;
+  var ctrlHeld = false;        // holding Ctrl (Cmd on a Mac) turns the placing tools into the Move tool until it's let go
+  var ctrlUsed = false;        // ...and whether it was actually used for a click or drag this time
+  var ctrlReleasedMidDrag = false;
+  var lastPt = null;           // where the pointer was last seen on the canvas
+  var gridSnap = true;   // set again whenever the editor opens: on for drawing, off for a photo
+  var GRID = 24;         // spacing of the grid lines that are drawn
+  var SNAP_STEP = 6;     // while snapping is on, edges and sizes snap to multiples of this: a quarter of a grid square, so every grid line can still be hit
   var SNAP_PX = 8; // how close a size has to be to count as "matching"
-  var NUMBER_SIZES = { small: { r: 16, font: 12 }, large: { r: 22, font: 16 } };
+  var NUMBER_SIZES = { small: { r: 19, font: 15 }, large: { r: 26, font: 20 } };
   // Designs saved before there were only two sizes may say 'medium' or the old
   // tiny 'small'. Anything that isn't 'large' opens as the (new) Small.
   function normalizeNumberSize(v) { return v === 'large' ? 'large' : 'small'; }
@@ -283,8 +289,8 @@
     if (e.key.toLowerCase() === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
     else if (e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
     else if (e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
-    else if (e.key.toLowerCase() === 'c' && currentTool === 'move') { e.preventDefault(); copySelection(); }
-    else if (e.key.toLowerCase() === 'v' && currentTool === 'move') { e.preventDefault(); pasteClipboard(); }
+    else if (e.key.toLowerCase() === 'c' && activeTool() === 'move') { e.preventDefault(); copySelection(); }
+    else if (e.key.toLowerCase() === 'v' && activeTool() === 'move') { e.preventDefault(); pasteClipboard(); }
   });
 
   // ─── START SCREEN ───────────────────────────────────────────────────────────
@@ -384,6 +390,8 @@
   function startEditor(mode) {
     changeTrackingOn = false;
     state.mode = mode;
+    gridSnap = (mode === 'draw');       // a grid helps when drawing; over a photo it's just lines, and numbers need to land exactly on real tables
+    document.getElementById('grid-toggle').classList.toggle('on', gridSnap);
     state.shapes = []; state.numbers = [];
     undoHistory = []; historyIndex = -1;
     setAspect(chosenAspect(mode));
@@ -575,8 +583,10 @@
     var wasShapes = selectedShapeIds, wasNumbers = selectedNumberIds, wasHighlight = highlightShapeId;
     selectedShapeIds = []; selectedNumberIds = []; highlightShapeId = null;
     renderScale = scale; canvas.width = W * scale; canvas.height = H * scale;
+    renderingOutput = true;
     draw();
     var url = canvas.toDataURL('image/png');
+    renderingOutput = false;
     renderScale = 1; canvas.width = W; canvas.height = H;
     selectedShapeIds = wasShapes; selectedNumberIds = wasNumbers; highlightShapeId = wasHighlight;
     draw();
@@ -602,7 +612,7 @@
     document.querySelectorAll('.tool-btn[data-tool]').forEach(function(b) {
       b.classList.toggle('active', b.dataset.tool === tool);
     });
-    canvas.className = 'tool-' + tool;
+    canvas.className = 'tool-' + activeTool();
     canvas.style.cursor = '';
     document.getElementById('zoom-row').style.display = tool === 'crop' ? 'flex' : 'none';
     if (tool === 'crop' && photoImg) {
@@ -619,6 +629,35 @@
   document.querySelectorAll('.tool-btn[data-tool]').forEach(function(btn) {
     btn.addEventListener('click', function() { setTool(btn.dataset.tool); });
   });
+
+  // Holding Ctrl (Cmd on a Mac) in a placing tool acts as the Move tool until it's released. Only the
+  // cursor shows it: the toolbar keeps the tool you chose. Which tool a click uses is decided when the
+  // mouse goes down, so a drag already under way finishes as whatever it started as.
+  var SWAP_TOOLS = ['ellipse', 'rect', 'entrance', 'number'];
+  function activeTool() { return (ctrlHeld && SWAP_TOOLS.indexOf(currentTool) > -1) ? 'move' : currentTool; }
+  function refreshToolCursor() {
+    if (dragMode) return;
+    canvas.className = 'tool-' + activeTool();
+    canvas.style.cursor = '';
+    if (lastPt) updateHoverCursor(lastPt);
+  }
+  function finishCtrl() {
+    if (ctrlUsed && SWAP_TOOLS.indexOf(currentTool) > -1) { selectedShapeIds = []; selectedNumberIds = []; draw(); } // back in the tool, as if just switched to it
+    ctrlUsed = false;
+    refreshToolCursor();
+  }
+  function releaseCtrl() {
+    ctrlHeld = false;
+    if (dragMode) { ctrlReleasedMidDrag = true; return; }
+    finishCtrl();
+  }
+  window.addEventListener('keydown', function(e) {
+    if ((e.key === 'Control' || e.key === 'Meta') && !ctrlHeld) { ctrlHeld = true; ctrlUsed = false; refreshToolCursor(); }
+  });
+  window.addEventListener('keyup', function(e) {
+    if ((e.key === 'Control' || e.key === 'Meta') && ctrlHeld) releaseCtrl();
+  });
+  window.addEventListener('blur', function() { if (ctrlHeld) releaseCtrl(); });
   document.getElementById('grid-toggle').addEventListener('click', function() {
     gridSnap = !gridSnap;
     this.classList.toggle('on', gridSnap);
@@ -713,7 +752,7 @@
       ctx.fillStyle = '#faf9f6'; ctx.fillRect(0, 0, W, H);
     }
 
-    if (gridSnap) {
+    if (gridSnap && !renderingOutput) {
       ctx.strokeStyle = 'rgba(39,53,52,0.08)'; ctx.lineWidth = 1;
       for (var gx = 0; gx <= W; gx += GRID) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
       for (var gy = 0; gy <= H; gy += GRID) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
@@ -817,7 +856,20 @@
     });
     return best;
   }
-  function snapToGrid(v) { return gridSnap ? Math.round(v / GRID) * GRID : v; }
+  function snapToGrid(v) { return gridSnap ? Math.round(v / SNAP_STEP) * SNAP_STEP : v; }
+  function snapPt(p) { return { x: snapToGrid(p.x), y: snapToGrid(p.y) }; }
+  // Half the width and height of the box a shape's outline fits in once it has been turned.
+  // Edges, not the (invisible) center, are what line up with the grid, so snapping works from these.
+  function shapeExtent(s) {
+    var rad = (s.rotation || 0) * Math.PI / 180, c = Math.abs(Math.cos(rad)), n = Math.abs(Math.sin(rad)), hx, hy;
+    if (s.kind === 'ellipse') {
+      hx = Math.sqrt(Math.pow(s.w / 2 * c, 2) + Math.pow(s.h / 2 * n, 2));
+      hy = Math.sqrt(Math.pow(s.w / 2 * n, 2) + Math.pow(s.h / 2 * c, 2));
+    } else {
+      hx = (s.w * c + s.h * n) / 2; hy = (s.w * n + s.h * c) / 2;
+    }
+    return { hx: Math.round(hx * 1e6) / 1e6, hy: Math.round(hy * 1e6) / 1e6 };
+  }
 
   // ─── CANVAS POINTER HANDLING ────────────────────────────────────────────────
   var draftShape = null;     // the shape being drawn right now
@@ -873,7 +925,7 @@
   // The diagonal resize cursors don't rotate with the shape — a corner on a
   // 40-degree-rotated shape still shows the same cursor it would unrotated.
   function updateHoverCursor(pt) {
-    if (currentTool !== 'move') { canvas.style.cursor = ''; return; }
+    if (activeTool() !== 'move') { canvas.style.cursor = ''; return; }
     var handleHit = hitTestHandle(pt.x, pt.y);
     canvas.style.cursor = handleHit ? (HANDLE_CURSORS[handleHit.handle.type] || 'pointer') : '';
   }
@@ -919,20 +971,23 @@
 
   canvas.addEventListener('mousedown', function(e) {
     var pt = canvasPoint(e);
+    var tool = activeTool();           // decided now, for the whole click or drag
+    if (tool !== currentTool) ctrlUsed = true;
 
-    if (currentTool === 'number') {
+    if (tool === 'number') {
       var existing = hitTestNumber(pt.x, pt.y);
       openPicker(e, pt, existing || null);
       return;
     }
 
-    if (currentTool === 'ellipse' || currentTool === 'rect' || currentTool === 'entrance') {
-      dragMode = 'draft'; dragStart = pt;
-      draftShape = { id: null, kind: currentTool, x: pt.x, y: pt.y, w: 0, h: 0, rotation: 0 };
+    if (tool === 'ellipse' || tool === 'rect' || tool === 'entrance') {
+      var sp = snapPt(pt);               // the corner you start from lands on a snap point
+      dragMode = 'draft'; dragStart = sp;
+      draftShape = { id: null, kind: tool, x: sp.x, y: sp.y, w: 0, h: 0, rotation: 0 };
       return;
     }
 
-    if (currentTool === 'move') {
+    if (tool === 'move') {
       var handleHit = hitTestHandle(pt.x, pt.y);
       if (handleHit) {
         if (handleHit.isGroup) {
@@ -996,25 +1051,26 @@
       return;
     }
 
-    if (currentTool === 'crop' && photoImg) {
+    if (tool === 'crop' && photoImg) {
       dragMode = 'pan'; dragStart = pt; dragOrigShape = { x: imageTransform.x, y: imageTransform.y };
     }
   });
 
   canvas.addEventListener('mousemove', function(e) {
     var pt = canvasPoint(e);
+    lastPt = pt;
     if (!dragMode) { updateHoverCursor(pt); return; }
 
     if (dragMode === 'draft') {
-      var dx = pt.x - dragStart.x, dy = pt.y - dragStart.y;
+      var ep = snapPt(pt);               // the corner being dragged lands on a snap point while snapping is on
+      var dx = ep.x - dragStart.x, dy = ep.y - dragStart.y;
       var w = Math.abs(dx);
       var h = e.shiftKey ? w : Math.abs(dy); // Shift: ellipse -> circle, rectangle -> square
-      var endX = dragStart.x + (dx >= 0 ? w : -w);
-      var endY = dragStart.y + (dy >= 0 ? h : -h);
-      var cx = (dragStart.x + endX) / 2, cy = (dragStart.y + endY) / 2;
       var match = findSizeMatch(draftShape.kind, w, h, null);
       highlightShapeId = match ? match.id : null;
       if (match) { w = match.w; h = match.h; }
+      // the corner you started from stays put, whatever size it ends up
+      var cx = dragStart.x + (dx >= 0 ? w : -w) / 2, cy = dragStart.y + (dy >= 0 ? h : -h) / 2;
       draftShape.w = w; draftShape.h = h; draftShape.x = cx; draftShape.y = cy;
       draw();
     }
@@ -1022,8 +1078,9 @@
     else if (dragMode === 'move') {
       var s = state.shapes.find(function(sh) { return sh.id === selectedShapeIds[0]; });
       if (!s) return;
-      s.x = snapToGrid(dragOrigShape.x + (pt.x - dragStart.x));
-      s.y = snapToGrid(dragOrigShape.y + (pt.y - dragStart.y));
+      var ex = shapeExtent(dragOrigShape); // snap the shape's top-left edge rather than its center
+      s.x = snapToGrid(dragOrigShape.x + (pt.x - dragStart.x) - ex.hx) + ex.hx;
+      s.y = snapToGrid(dragOrigShape.y + (pt.y - dragStart.y) - ex.hy) + ex.hy;
       draw();
     }
 
@@ -1040,14 +1097,21 @@
       if (!realDragHappened && Math.hypot(dxg, dyg) > DRAG_THRESHOLD) realDragHappened = true;
       if (realDragHappened) {
         if (dragMode === 'maybe-group-move-shape') {
+          // one snap for the whole group (by its top-left edge), so the shapes keep their spacing
+          var gl = Infinity, gt = Infinity;
+          dragOrigShapesSnapshot.forEach(function(orig) { var o = shapeExtent(orig); gl = Math.min(gl, orig.x - o.hx); gt = Math.min(gt, orig.y - o.hy); });
+          var sdx = snapToGrid(gl + dxg) - gl, sdy = snapToGrid(gt + dyg) - gt;
           dragOrigShapesSnapshot.forEach(function(orig) {
             var s2 = state.shapes.find(function(sh) { return sh.id === orig.id; });
-            if (s2) { s2.x = snapToGrid(orig.x + dxg); s2.y = snapToGrid(orig.y + dyg); }
+            if (s2) { s2.x = orig.x + sdx; s2.y = orig.y + sdy; }
           });
         } else {
+          var nl = Infinity, nt = Infinity;
+          dragOrigNumbersSnapshot.forEach(function(orig) { nl = Math.min(nl, orig.x); nt = Math.min(nt, orig.y); });
+          var ndx = snapToGrid(nl + dxg) - nl, ndy = snapToGrid(nt + dyg) - nt;
           dragOrigNumbersSnapshot.forEach(function(orig) {
             var n2 = state.numbers.find(function(nn) { return nn.id === orig.id; });
-            if (n2) { n2.shapeId = null; n2.x = snapToGrid(orig.x + dxg); n2.y = snapToGrid(orig.y + dyg); }
+            if (n2) { n2.shapeId = null; n2.x = orig.x + ndx; n2.y = orig.y + ndy; }
           });
         }
         draw();
@@ -1061,7 +1125,9 @@
       // from the start of the drag as the reference frame throughout — this
       // is what keeps the opposite corner visually anchored even when the
       // shape itself is rotated.
-      var localPt = toLocal(pt.x, pt.y, dragOrigShape);
+      // the corner being dragged snaps, but only on a shape that's square-on: a tilted one's edges can't follow a square grid
+      var rp = (gridSnap && (dragOrigShape.rotation || 0) % 90 === 0) ? snapPt(pt) : pt;
+      var localPt = toLocal(rp.x, rp.y, dragOrigShape);
       var ol = -dragOrigShape.w / 2, orr = dragOrigShape.w / 2;
       var ot = -dragOrigShape.h / 2, ob = dragOrigShape.h / 2;
       var anchorLX = activeHandle.type.indexOf('l') > -1 ? orr : ol;
@@ -1070,7 +1136,8 @@
       var newH = e.shiftKey ? newW : Math.abs(localPt.y - anchorLY);
       var m2 = findSizeMatch(s3.kind, newW, newH, s3.id);
       highlightShapeId = m2 ? m2.id : null;
-      var fw = m2 ? m2.w : Math.max(10, newW), fh = m2 ? m2.h : Math.max(10, newH);
+      var minSize = gridSnap ? 12 : 10;
+      var fw = m2 ? m2.w : Math.max(minSize, newW), fh = m2 ? m2.h : Math.max(minSize, newH);
       var endLX = anchorLX + (localPt.x >= anchorLX ? fw : -fw);
       var endLY = anchorLY + (localPt.y >= anchorLY ? fh : -fh);
       var newCenter = fromLocal((anchorLX + endLX) / 2, (anchorLY + endLY) / 2, dragOrigShape);
@@ -1094,8 +1161,9 @@
       var anchorGX = activeHandle.type.indexOf('l') > -1 ? gb.right : gb.left;
       var anchorGY = activeHandle.type.indexOf('t') > -1 ? gb.bottom : gb.top;
       var origW = gb.right - gb.left, origH = gb.bottom - gb.top;
-      var scaleX = Math.abs(pt.x - anchorGX) / origW;
-      var scaleY = e.shiftKey ? scaleX : Math.abs(pt.y - anchorGY) / origH;
+      var gp = snapPt(pt);               // the corner being dragged snaps
+      var scaleX = Math.abs(gp.x - anchorGX) / origW;
+      var scaleY = e.shiftKey ? scaleX : Math.abs(gp.y - anchorGY) / origH;
       dragOrigShapesSnapshot.forEach(function(orig) {
         var s4 = state.shapes.find(function(sh) { return sh.id === orig.id; });
         if (!s4) return;
@@ -1146,10 +1214,11 @@
       activeHandle = null; pendingClickTargetId = null; realDragHappened = false;
       pushHistory(); draw();
     }
+    if (ctrlReleasedMidDrag) { ctrlReleasedMidDrag = false; finishCtrl(); } else refreshToolCursor();
   });
 
   window.addEventListener('keydown', function(e) {
-    if ((e.key === 'Delete' || e.key === 'Backspace') && currentTool === 'move' && (selectedShapeIds.length || selectedNumberIds.length)) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && activeTool() === 'move' && (selectedShapeIds.length || selectedNumberIds.length)) {
       var active = document.activeElement;
       if (active && (active.tagName === 'INPUT')) return; // don't eat deletes while typing
       if (selectedShapeIds.length) {
