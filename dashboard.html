@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Manage | TablSide</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -194,6 +194,106 @@
   .modal-title { font-size:0.7rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); }
   .modal-close { background:none; border:none; font-size:1.4rem; color:var(--muted); cursor:pointer; padding:0 4px; }
   .modal-body { padding:1.25rem; display:flex; flex-direction:column; gap:0.75rem; }
+
+  /* ───────────── PHONES AND TABLETS ─────────────
+     Nothing below changes the desktop layout: it only applies to narrow screens, or to screens you touch. */
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  button, .sidebar-nav-item, .stats-tab, label { touch-action:manipulation; }
+  :root { --header-h:61px; }                 /* the real height is measured by script */
+  .fp-actions { display:contents; }          /* on a desktop the room buttons sit on the row exactly as before */
+  .touch-note { display:none; font-size:0.72rem; color:var(--muted); line-height:1.6; padding-top:0.75rem; max-width:560px; }
+
+  @media (max-width:900px) {
+    html, body { height:auto; min-height:100%; }
+    .app-header { padding:0.6rem max(1rem, env(safe-area-inset-right)) 0.6rem max(1rem, env(safe-area-inset-left)); padding-top:calc(0.6rem + env(safe-area-inset-top)); }
+    .header-actions { gap:0.9rem; }
+    .home-wrap { padding:1.5rem max(1rem, env(safe-area-inset-right)) 3rem max(1rem, env(safe-area-inset-left)); }
+    .home-header { flex-wrap:wrap; gap:0.75rem; }
+
+    /* the sidebar becomes a strip of tabs under the header */
+    .workspace { flex-direction:column; align-items:stretch; }
+    .workspace-sidebar { display:contents; }
+    .sidebar-back { display:flex; align-items:center; min-height:44px; background:var(--teal); padding:0 max(1rem, env(safe-area-inset-right)) 0 max(1rem, env(safe-area-inset-left)); border-bottom:none; }
+    .sidebar-back { font-size:0.76rem; }
+    .sidebar-venue-name { background:var(--teal); padding:0 max(1rem, env(safe-area-inset-right)) 0.9rem max(1rem, env(safe-area-inset-left)); border-bottom:none; font-size:1.35rem; }
+    .sidebar-nav { display:flex; overflow-x:auto; padding:0; position:sticky; top:var(--header-h); z-index:15; background:var(--teal); border-top:1px solid rgba(255,255,255,0.14); border-bottom:1px solid rgba(0,0,0,0.28); scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .sidebar-nav::-webkit-scrollbar { display:none; }
+    .sidebar-nav.more-right { -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+    .sidebar-nav.more-left { -webkit-mask-image:linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+    .sidebar-nav.more-left.more-right { -webkit-mask-image:linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+    .sidebar-nav-item { flex:0 0 auto; white-space:nowrap; padding:0.95rem 1.1rem; border-left:none; border-bottom:3px solid transparent; }
+    .sidebar-nav-item.active { border-left-color:transparent; border-bottom-color:var(--gold); }
+
+    .workspace-content, .workspace-content.wide { max-width:none; padding:1.5rem max(1rem, env(safe-area-inset-right)) 3rem max(1rem, env(safe-area-inset-left)); }
+  }
+
+  @media (max-width:700px) {
+    .overview-row { flex-direction:column; gap:1.25rem; }
+    .overview-preview { width:100%; max-width:320px; }
+    .overview-meta { min-width:0; width:100%; }
+    #qr-preview canvas, #qr-preview img { max-width:100%; height:auto; }
+    .color-row select { max-width:62%; min-width:0; }
+
+    /* the four guest-page previews become a row you swipe through */
+    .appearance-preview { max-width:none; }
+    .preview-grid { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; margin:0 calc(-1 * max(1rem, env(safe-area-inset-left))); padding:0 max(1rem, env(safe-area-inset-left)) 0.6rem; scroll-padding:0 1rem; -webkit-overflow-scrolling:touch; }
+    .preview-grid::-webkit-scrollbar { display:none; }
+    .preview-cell { flex:0 0 min(74vw, 280px); scroll-snap-align:center; }
+
+    /* each room becomes a card: picture and name above, buttons below */
+    .floorplan-row { flex-wrap:wrap; }
+    .floorplan-row .fp-info { flex:1 1 0; }
+    .fp-actions { display:flex; flex:1 1 100%; flex-wrap:wrap; gap:0.4rem; }
+    .fp-add-row { flex-direction:column; }
+    .fp-add-row > * { flex:0 0 auto !important; }
+
+    .modal-overlay { padding:0.75rem; }
+    .modal { max-height:calc(100vh - 1.5rem); max-height:calc(100dvh - 1.5rem); }
+  }
+
+  @media (max-width:600px) {
+    .header-name { display:none !important; }
+    .header-wordmark { height:22px; }
+    .stats-grid { grid-template-columns:1fr 1fr; gap:0.75rem; }
+    .stat-card { padding:0.85rem; }
+    #stats-pdf-btn { width:100%; }
+  }
+  @media (max-width:340px) { .stats-grid { grid-template-columns:1fr; } }
+
+  /* screens you touch: bigger targets and text (and inputs at 16px, or iPhones zoom in whenever you tap one) */
+  @media (pointer:coarse) {
+    .btn-outline, .btn-solid, .venue-btn, .file-label, .venue-card-actions button, .header-link, .tx-reset { min-height:44px; }
+    .btn-outline, .btn-solid { font-size:0.76rem; padding-left:1.1rem; padding-right:1.1rem; }
+    .venue-btn { font-size:0.75rem; padding:0.6rem 0.95rem; }
+    .venue-card-actions button { font-size:0.75rem; padding:0 1rem; }
+    .header-link { font-size:0.74rem; padding:0 0.4rem; }
+    .sidebar-nav-item, .stats-tab { min-height:44px; display:flex; align-items:center; justify-content:center; font-size:0.76rem; }
+    input[type=text], input[type=number], input[type=url], textarea, select, .short-input, .text-field, .hex-input { font-size:16px; min-height:44px; }
+    input[type=color] { width:44px; height:44px; }
+    input[type=checkbox] { width:20px; height:20px; }
+    .link-screens { gap:0.25rem 0.9rem; }
+    .link-screens label { min-height:44px; font-size:0.76rem; }
+    .link-drag { width:2.75rem; }
+    .link-row { padding-left:3.4rem; }
+    .form-label, .setting-label, .stat-label, .overview-section-label, .preview-label, .preview-cell-label, .tx-field-head label, .fp-note { font-size:0.76rem; }
+    .fp-name { font-size:0.9rem; }
+    .tx-group summary { min-height:44px; display:flex; align-items:center; font-size:0.76rem; }
+    .tx-reset { font-size:0.75rem; }
+    .link-click-row { padding:0.65rem 0; font-size:0.85rem; }
+    .preview-chip { min-height:44px; display:flex; align-items:center; justify-content:center; padding:0; font-size:0.72rem; }
+    .move-up-btn, .move-down-btn { min-width:44px; }
+    .modal-close { min-width:44px; min-height:44px; font-size:1.6rem; }
+    .saved-msg, .error-msg { font-size:0.76rem; }
+    .overview-id, .touch-note { font-size:0.8rem; }
+    .file-label, .file-label span { font-size:0.78rem; }
+    /* a few notes carry their own small size written into the page: on a touch screen, lift them too */
+    [style*="font-size:0.6"], [style*="font-size:0.7"], [style*="font-size: 0.6"], [style*="font-size: 0.7"] { font-size:0.78rem !important; }
+  }
+  /* the floor plan wizard only understands a mouse: on a screen with no mouse, say so instead of offering it */
+  @media (hover:none) and (pointer:coarse) {
+    #open-floorplan-wizard-btn, .edit-room-btn { display:none; }
+    .touch-note { display:block; }
+  }
 </style>
 </head>
 <body class="pending">
@@ -358,7 +458,7 @@
           <div class="saved-msg" id="tables-saved" style="text-align:left;">Table numbers saved</div>
         </div>
         <div id="room-list" style="max-width:560px;"></div>
-        <div style="display:flex;gap:0.6rem;max-width:560px;">
+        <div class="fp-add-row" style="display:flex;gap:0.6rem;max-width:560px;">
           <label class="file-label" id="floorplan-upload-label" style="flex:1;">
             <span id="floorplan-upload-text">+ Add floor plan photo</span>
             <input type="file" id="floorplan-upload-input" accept="image/*" style="display:none;">
@@ -368,6 +468,7 @@
           </button>
         </div>
         <div class="error-msg" id="floorplan-error" style="display:none;max-width:560px;"></div>
+        <div class="touch-note" id="floorplan-touch-note">Floor plans are designed on a computer. You can still add a photo of the room here.</div>
       </div>
 
       <div class="tab-panel" id="panel-qr">
@@ -785,6 +886,15 @@
     item.addEventListener('click', function() { switchWorkspaceTab(item.dataset.tab); });
   });
 
+  // The tab strip on a phone sticks just under the header, so it needs to know how tall the header is.
+  (function() {
+    var header = document.querySelector('.app-header');
+    function setHeaderHeight() { document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px'); }
+    setHeaderHeight();
+    window.addEventListener('resize', setHeaderHeight);
+    if (window.ResizeObserver) new ResizeObserver(setHeaderHeight).observe(header);
+  })();
+
   function switchWorkspaceTab(tab) {
     document.querySelectorAll('.sidebar-nav-item').forEach(function(i) { i.classList.toggle('active', i.dataset.tab === tab); });
     document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
@@ -797,7 +907,22 @@
     }
     if (tab === 'floorplan') renderFloorplanRows();
     document.querySelector('.workspace-content').classList.toggle('wide', tab === 'appearance');
+    // On a phone the tabs are a swipeable strip: bring the chosen one into view, and start the new tab at the top.
+    var nav = document.querySelector('.sidebar-nav'), activeItem = nav.querySelector('.sidebar-nav-item.active');
+    try {
+      if (nav.scrollTo && activeItem && nav.scrollWidth > nav.clientWidth + 1) nav.scrollTo({ left: activeItem.offsetLeft - (nav.clientWidth - activeItem.offsetWidth) / 2, behavior: 'smooth' });
+      if (getComputedStyle(nav).position === 'sticky') window.scrollTo(0, 0);
+    } catch (err) {}
+    updateTabHint();
   }
+  // fade whichever edge of the tab strip has more tabs hidden past it
+  function updateTabHint() {
+    var nav = document.querySelector('.sidebar-nav');
+    nav.classList.toggle('more-right', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2);
+    nav.classList.toggle('more-left', nav.scrollLeft > 2);
+  }
+  document.querySelector('.sidebar-nav').addEventListener('scroll', updateTabHint, { passive: true });
+  window.addEventListener('resize', updateTabHint);
 
   function openWorkspace(s) {
     var v = venues.find(function(v) { return v.slug === s; });
@@ -1324,11 +1449,13 @@
         '<img src="' + escapeAttr(r.imageUrl) + '" alt="' + escapeAttr(r.name) + '">' +
         '<div class="fp-info"><div class="fp-name">' + escapeHtml(r.name) + '</div>' +
           (r.imageStale ? '<div class="fp-note">Image out of date</div>' : '') + '</div>' +
-        (r.design ? '<button type="button" class="venue-btn edit-room-btn">Edit</button>' : '') +
-        '<button type="button" class="venue-btn move-up-btn"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-        '<button type="button" class="venue-btn move-down-btn"' + (i === rooms.length - 1 ? ' disabled' : '') + '>↓</button>' +
-        '<button type="button" class="venue-btn rename-room-btn">Rename</button>' +
-        '<button type="button" class="venue-btn danger delete-room-btn">Delete</button>' +
+        '<div class="fp-actions">' +
+          (r.design ? '<button type="button" class="venue-btn edit-room-btn">Edit</button>' : '') +
+          '<button type="button" class="venue-btn move-up-btn"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button type="button" class="venue-btn move-down-btn"' + (i === rooms.length - 1 ? ' disabled' : '') + '>↓</button>' +
+          '<button type="button" class="venue-btn rename-room-btn">Rename</button>' +
+          '<button type="button" class="venue-btn danger delete-room-btn">Delete</button>' +
+        '</div>' +
       '</div>';
     }).join('');
     var blocked = !v.roomsLoaded || rooms.length >= MAX_ROOMS;
