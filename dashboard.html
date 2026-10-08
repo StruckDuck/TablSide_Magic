@@ -95,7 +95,15 @@
   .hex-input { width:80px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.68rem; padding:4px 6px; outline:none; }
   .short-input, .text-field { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.72rem; padding:8px 10px; outline:none; width:100%; }
   .form-label { font-size:0.62rem; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.4rem; }
-  .link-row { border:1px solid var(--border); padding:0.65rem; display:flex; flex-direction:column; gap:0.45rem; margin-bottom:0.5rem; }
+  .link-row { position:relative; border:1px solid var(--border); padding:0.65rem 0.65rem 0.65rem 2.2rem; display:flex; flex-direction:column; gap:0.45rem; margin-bottom:0.5rem; }
+  .link-drag { position:absolute; left:0; top:0; bottom:0; width:1.6rem; display:flex; align-items:center; justify-content:center; background:none; border:none; border-right:1px solid var(--border); color:var(--muted); cursor:grab; touch-action:none; padding:0; }
+  .link-drag:hover { color:var(--teal); background:var(--surface2); }
+  .link-drag:focus-visible { outline:2px solid var(--teal); outline-offset:-2px; }
+  .link-drag svg { width:10px; height:16px; pointer-events:none; }
+  .link-row:only-child .link-drag { visibility:hidden; pointer-events:none; }
+  .link-row.dragging { background:var(--surface); box-shadow:0 8px 22px rgba(26,22,18,0.22); z-index:5; }
+  .link-row.dragging .link-drag { cursor:grabbing; }
+  body.link-dragging, body.link-dragging * { cursor:grabbing !important; user-select:none; -webkit-user-select:none; }
   .link-screens { display:flex; gap:0.75rem; flex-wrap:wrap; font-size:0.62rem; color:var(--muted); letter-spacing:0.06em; }
   .link-screens label { display:flex; align-items:center; gap:0.3rem; cursor:pointer; }
   .floorplan-row { display:flex; align-items:center; gap:0.5rem; border:1px solid var(--border); padding:0.5rem; margin-bottom:0.5rem; }
@@ -573,6 +581,12 @@
   function escapeHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
+  // When the server refuses a save (rather than the connection failing), say so, and keep the real reason in the console.
+  function saveFailMessage(err) {
+    if (window.console) console.error('Save failed:', err);
+    if (err && err.code === 'permission-denied') return 'Could not save. The server refused this change.';
+    return 'Could not save. Check your connection and try again.';
+  }
   function generateVenueId() {
     var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     var id = '';
@@ -830,6 +844,8 @@
     var screens = link.screens || [];
     function checked(v) { return screens.indexOf(v) > -1 ? 'checked' : ''; }
     return '<div class="link-row">' +
+      '<button type="button" class="link-drag" title="Drag to reorder" aria-label="Reorder this link. Drag it, or use the up and down arrow keys.">' +
+        '<svg viewBox="0 0 10 16" fill="currentColor"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg></button>' +
       '<input type="text" class="short-input link-label" maxlength="40" placeholder="Label (e.g. Instagram)" value="' + escapeAttr(link.label) + '">' +
       '<input type="text" class="short-input link-url" placeholder="https://..." value="' + escapeAttr(link.url) + '">' +
       '<div class="link-screens">' +
@@ -861,6 +877,84 @@
     btn.closest('.link-row').remove();
     updateAddLinkBtn();
   });
+  // Drag a link by its handle to put the links in a different order (or focus the handle and use
+  // the up and down arrow keys). The rows themselves are what move, so whatever has been typed
+  // into a link goes with it, and the order saved is simply the order on screen.
+  (function() {
+    var list = document.getElementById('link-list');
+    var drag = null;
+    function mid(el) { var r = el.getBoundingClientRect(); return r.top + r.height / 2; }
+    function glide(el, fromTop) { // a row that got bumped slides into its new place
+      var shift = fromTop - el.getBoundingClientRect().top;
+      if (!shift) return;
+      el.style.transition = 'none';
+      el.style.transform = 'translateY(' + shift + 'px)';
+      el.getBoundingClientRect();
+      el.style.transition = 'transform 140ms ease';
+      el.style.transform = '';
+      setTimeout(function() { el.style.transition = ''; }, 180);
+    }
+    function follow(y) { // keep the dragged row under the pointer
+      var row = drag.row;
+      row.style.transform = '';
+      var natural = row.getBoundingClientRect().top;
+      row.style.transform = 'translateY(' + (y - drag.grab - natural) + 'px)';
+    }
+    list.addEventListener('pointerdown', function(e) {
+      var handle = e.target.closest('.link-drag');
+      if (!handle || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      if (drag) end({ pointerId: drag.id }); // a release we never saw: finish that drag first
+      var row = handle.closest('.link-row');
+      e.preventDefault();
+      try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+      drag = { id: e.pointerId, row: row, handle: handle, grab: e.clientY - row.getBoundingClientRect().top };
+      row.style.transition = 'none'; // picking it up again mid-settle: follow the pointer, no easing
+      row.classList.add('dragging');
+      document.body.classList.add('link-dragging');
+    });
+    list.addEventListener('pointermove', function(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      follow(e.clientY);
+      // swap with whichever neighbours the dragged row's middle has crossed (a fast drag can cross several)
+      for (var guard = 0; guard < 12; guard++) {
+        var row = drag.row, top;
+        var middle = e.clientY - drag.grab + row.offsetHeight / 2;
+        var prev = row.previousElementSibling, next = row.nextElementSibling;
+        if (prev && middle < mid(prev)) { top = prev.getBoundingClientRect().top; list.insertBefore(prev, row.nextSibling); glide(prev, top); }
+        else if (next && middle > mid(next)) { top = next.getBoundingClientRect().top; list.insertBefore(next, row); glide(next, top); }
+        else break;
+        follow(e.clientY);
+      }
+    });
+    function end(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var row = drag.row, handle = drag.handle;
+      drag = null;
+      try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
+      document.body.classList.remove('link-dragging');
+      row.classList.remove('dragging');
+      row.style.transition = 'transform 120ms ease';
+      row.style.transform = '';
+      setTimeout(function() { row.style.transition = ''; }, 160);
+      updateGuestPreview();
+    }
+    list.addEventListener('pointerup', end);
+    list.addEventListener('pointercancel', end);
+    list.addEventListener('lostpointercapture', end);
+    list.addEventListener('keydown', function(e) {
+      var handle = e.target.closest ? e.target.closest('.link-drag') : null;
+      if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      e.preventDefault();
+      var row = handle.closest('.link-row');
+      var other = e.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+      if (!other) return;
+      var otherTop = other.getBoundingClientRect().top, rowTop = row.getBoundingClientRect().top;
+      if (e.key === 'ArrowUp') list.insertBefore(other, row.nextSibling); else list.insertBefore(other, row);
+      glide(other, otherTop); glide(row, rowTop);
+      updateGuestPreview();
+    });
+  })();
+
   function readLinksFromForm() {
     var rows = document.querySelectorAll('#link-list .link-row');
     var links = [];
@@ -1147,8 +1241,8 @@
       showSaved('config-saved');
       renderOverview(v);
       renderVenueGrid();
-    }).catch(function() {
-      errorEl.textContent = 'Could not save. Check your connection and try again.';
+    }).catch(function(err) {
+      errorEl.textContent = saveFailMessage(err);
       errorEl.style.display = 'block';
     });
   });
@@ -1275,8 +1369,8 @@
       if (j < 0 || j >= v.rooms.length) return;
       v.rooms[i] = v.rooms[j]; v.rooms[j] = room;
       renderRoomRows();
-      renumberRooms(v).then(function() { renderOverview(v); }).catch(function() {
-        reloadRoomsAfterError(v, 'Could not save. Check your connection and try again.');
+      renumberRooms(v).then(function() { renderOverview(v); }).catch(function(err) {
+        reloadRoomsAfterError(v, saveFailMessage(err));
       });
     } else if (e.target.closest('.rename-room-btn')) {
       var name = prompt('Rename room:', room.name);
@@ -1285,7 +1379,7 @@
       if (!name || name === room.name) return;
       roomsRef(v.slug).doc(id).update({ name: name }).then(function() {
         room.name = name; renderRoomRows();
-      }).catch(function() { showFloorplanError('Could not save. Check your connection and try again.'); });
+      }).catch(function(err) { showFloorplanError(saveFailMessage(err)); });
     } else if (e.target.closest('.delete-room-btn')) {
       if (!confirm('Delete this room and its floor plan?')) return;
       roomsRef(v.slug).doc(id).delete().then(function() {
@@ -1447,8 +1541,8 @@
       v.tables = tables;
       document.getElementById('c-tables').value = tables.join(', ');
       showSaved('tables-saved');
-    }).catch(function() {
-      errorEl.textContent = 'Could not save. Check your connection and try again.';
+    }).catch(function(err) {
+      errorEl.textContent = saveFailMessage(err);
       errorEl.style.display = 'block';
     });
   });
@@ -2181,7 +2275,7 @@
       if (logoUrl !== undefined) data.logoUrl = logoUrl;
       db.collection('performers').doc(currentUser.uid).set(data, { merge: true })
         .then(function() { performerLogoFile = null; performerRemoveLogo = false; setHeaderName(name); showSaved('performer-saved'); })
-        .catch(function() { errorEl.textContent = 'Could not save. Check your connection and try again.'; errorEl.style.display = 'block'; });
+        .catch(function(err) { errorEl.textContent = saveFailMessage(err); errorEl.style.display = 'block'; });
     }
     if (performerLogoFile) {
       var ref = storage.ref('performer-logos/' + currentUser.uid + '/logo');
