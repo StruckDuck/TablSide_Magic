@@ -152,6 +152,12 @@
   .hex-input { width:80px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.68rem; padding:4px 6px; outline:none; }
   .short-input { background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'Raleway',sans-serif; font-size:0.68rem; padding:5px 8px; outline:none; width:160px; }
   body.pending { visibility:hidden; }
+  #lock-screen { position:fixed; inset:0; z-index:250; background:var(--bg); align-items:center; justify-content:center; padding:1.5rem; }
+  .lock-card { width:100%; max-width:380px; text-align:center; background:var(--surface); border:1px solid var(--border); padding:2rem 1.5rem; }
+  .lock-title { font-family:'Cormorant Garamond',serif; font-size:1.7rem; color:var(--text); margin-bottom:0.7rem; }
+  .lock-text { font-size:0.9rem; color:var(--muted); line-height:1.7; margin-bottom:1.4rem; }
+  .lock-btn { display:flex; align-items:center; justify-content:center; min-height:48px; background:var(--teal); color:#fff; text-decoration:none; font-size:0.78rem; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; }
+  .lock-secondary { margin-top:0.6rem; min-height:44px; width:100%; background:none; border:none; color:var(--muted); font-family:inherit; font-size:0.8rem; cursor:pointer; text-decoration:underline; }
 </style>
 </head>
 <body class="pending">
@@ -227,12 +233,22 @@
   </div>
 </div>
 
+<!-- LOCK SCREEN: shown when the account has no active subscription -->
+<div id="lock-screen" style="display:none;">
+  <div class="lock-card">
+    <div class="lock-title">TablSide is locked</div>
+    <div class="lock-text">Subscribe in the dashboard to start performing. Your venues and settings are saved.</div>
+    <a class="lock-btn" id="lock-dashboard-link" href="dashboard.html">Open dashboard</a>
+    <button type="button" class="lock-secondary" id="lock-signout-btn">Sign out</button>
+  </div>
+</div>
+
 <script>
   // ─── NEW-VERSION NOTICE ─────────────────────────────────────────────────────
   // A tab left open keeps running the version it loaded. Every delivery gets a new BUILD here and in
   // version.json, and this checks now and then whether a newer one is out. It only offers a refresh:
   // it never reloads by itself, so a show is never interrupted.
-  var BUILD = '2026-10-08-1';
+  var BUILD = '2026-10-09-1';
   (function() {
     var shown = false, lastCheck = 0, snoozeUntil = 0;
     var stamp = document.getElementById('build-stamp'); if (stamp) stamp.textContent = BUILD;
@@ -1005,14 +1021,32 @@
   document.getElementById('signout-btn').addEventListener('click', function() {
     firebase.auth().signOut();
   });
+  // ─── LOCK: the live app needs an active subscription ────────────────────────
+  // This only decides what you see. The security rules refuse the same things on the server.
+  // The lock is decided once, when the app opens. If access ends while a show is under way
+  // the screen is left alone (the server stops new requests by itself), and it only locks
+  // the next time the app is opened. Subscribing in another tab unlocks it at once.
+  var ACCESS_STATUSES = ['active', 'trialing', 'past_due', 'comped'];
+  var billingSeen = false;
+  function setLock(on) { document.getElementById('lock-screen').style.display = on ? 'flex' : 'none'; }
+  function watchBilling(user) {
+    db.collection('billing').doc(user.uid).onSnapshot(function(snap) {
+      var ok = snap.exists && ACCESS_STATUSES.indexOf(snap.data().status) > -1;
+      if (!billingSeen) { billingSeen = true; if (!ok) setLock(true); return; }
+      if (ok) setLock(false);
+    }, function() { /* could not check: do not lock anyone out here, the server still enforces the rules */ });
+  }
+  document.getElementById('lock-signout-btn').addEventListener('click', function() { firebase.auth().signOut(); });
+
   firebase.auth().onAuthStateChanged(function(user) {
-    if (!user) { window.location.replace('login.html'); return; }
+    if (!user) { window.location.replace('login.html?next=admin.html'); return; }
     currentUser = user;
     document.getElementById('account-email').textContent = user.email;
     document.body.classList.remove('pending');
     loadVenues();
     updatePushStatus();
     maybeShowPushPrompt();
+    watchBilling(user);
   });
 </script>
 </body>

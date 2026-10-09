@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -295,6 +296,58 @@
     #open-floorplan-wizard-btn, .edit-room-btn { display:none; }
     .touch-note { display:block; }
   }
+  /* ───────────── BILLING SCREENS ───────────── */
+  .hl-short { display:none; }
+  .billing-banner { display:flex; align-items:center; justify-content:center; gap:0.9rem; flex-wrap:wrap; padding:0.7rem 1rem; background:#fbeaea; border-bottom:1px solid #e2b8b8; color:var(--red); font-size:0.8rem; line-height:1.5; text-align:center; }
+  .pw-wrap { max-width:520px; margin:0 auto; padding:2.5rem 1rem 4rem; }
+  .pw-card { background:var(--surface); border:1px solid var(--border); padding:2rem 1.75rem; text-align:center; }
+  .pw-eyebrow { font-size:0.62rem; letter-spacing:0.25em; text-transform:uppercase; color:var(--muted); margin-bottom:0.9rem; }
+  .pw-title { font-family:'Cormorant Garamond',serif; font-size:1.9rem; font-weight:400; color:var(--text); line-height:1.2; }
+  .pw-sub { font-size:0.85rem; color:var(--muted); line-height:1.6; margin:0.6rem 0 1.4rem; }
+  .pw-price { margin-bottom:1.1rem; }
+  .pw-amount { font-family:'Cormorant Garamond',serif; font-size:2.8rem; color:var(--teal); }
+  .pw-per { font-size:0.8rem; color:var(--muted); }
+  .pw-list { list-style:none; padding:0; margin:0 0 1.2rem; text-align:left; border-top:1px solid var(--border); }
+  .pw-list li { padding:0.65rem 0 0.65rem 1.4rem; border-bottom:1px solid var(--border); font-size:0.85rem; line-height:1.5; position:relative; }
+  .pw-list li::before { content:''; position:absolute; left:0.2rem; top:1.05rem; width:6px; height:6px; background:var(--gold); border-radius:50%; }
+  .pw-founding { font-size:0.8rem; color:var(--text); line-height:1.6; margin-bottom:0.6rem; }
+  .pw-seats { font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:1rem; }
+  .pw-btn { width:100%; padding:0.95rem 1rem; font-size:0.74rem; }
+  .pw-btn:disabled { opacity:0.55; cursor:default; }
+  .pw-note { margin-top:0.9rem; font-size:0.8rem; line-height:1.6; color:var(--text); padding:0.7rem 0.9rem; background:var(--surface2); }
+  .pw-note.error { color:var(--red); background:#fbeaea; }
+  .pw-fine { margin-top:1rem; font-size:0.7rem; color:var(--muted); line-height:1.6; }
+  .pw-status-title { font-family:'Cormorant Garamond',serif; font-size:1.5rem; color:var(--text); margin-bottom:0.6rem; }
+  .pw-text { font-size:0.85rem; color:var(--muted); line-height:1.7; margin-bottom:1.2rem; }
+  .pw-text a, .pw-account a { color:var(--teal); }
+  .pw-pulse { width:34px; height:34px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--teal); margin:0.4rem auto 1.1rem; animation:pwspin 0.9s linear infinite; }
+  @keyframes pwspin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .pw-pulse { animation:none; } }
+  .pw-account { margin-top:1.1rem; text-align:center; font-size:0.75rem; color:var(--muted); }
+  .bill-value { font-family:'Cormorant Garamond',serif; font-size:1.25rem; color:var(--text); margin-bottom:0.4rem; }
+  .bill-value.warn { color:var(--red); }
+  .bill-date { font-size:0.8rem; color:var(--muted); line-height:1.6; }
+  .bill-note { font-size:0.8rem; color:var(--text); line-height:1.6; background:var(--surface2); padding:0.7rem 0.9rem; }
+  @media (max-width:600px) {
+    .hl-full { display:none; }
+    .hl-short { display:inline; }
+    .pw-wrap { padding:1.25rem 0.75rem 3rem; }
+    .pw-card { padding:1.5rem 1.1rem; }
+    .pw-title { font-size:1.65rem; }
+  }
+  @media (max-width:360px) {        /* very small phones: three header links need a little less room each */
+    .app-header { padding-left:max(0.75rem, env(safe-area-inset-left)); padding-right:max(0.75rem, env(safe-area-inset-right)); }
+    .header-actions { gap:0.5rem; }
+    .app-header .btn-outline { padding-left:10px; padding-right:10px; }
+    .header-link { letter-spacing:0.05em; padding-left:0.2rem; padding-right:0.2rem; }
+    .app-header .btn-outline, .header-link { white-space:nowrap; }
+  }
+  @media (pointer:coarse) {
+    .pw-eyebrow, .pw-fine, .pw-seats, .pw-account, .pw-note, .bill-date, .bill-note { font-size:0.78rem; }
+    .pw-btn { min-height:48px; }
+    .pw-account a { display:inline-flex; align-items:center; min-height:44px; padding:0 0.5rem; }
+    .pw-text a { display:inline-block; min-height:44px; line-height:44px; }
+  }
 </style>
 </head>
 <body class="pending">
@@ -342,13 +395,75 @@
   </div>
   <div class="header-actions">
     <span id="header-performer-name" class="header-name" style="display:none;"></span>
-    <button class="header-link" id="performer-info-link">Performer Info</button>
+    <button class="header-link" id="billing-link" style="display:none;">Billing</button>
+    <button class="header-link" id="performer-info-link"><span class="hl-full">Performer Info</span><span class="hl-short">Profile</span></button>
     <button class="btn btn-outline" id="signout-btn">Sign Out</button>
   </div>
 </div>
 
+<!-- BILLING: failed-payment banner, Subscribe screen, and "could not check" screen -->
+<div class="billing-banner" id="billing-banner" style="display:none;">
+  <span id="billing-banner-text">Your last payment did not go through. Update your card to keep your access.</span>
+  <button class="btn btn-solid" id="billing-banner-btn" type="button">Update card</button>
+</div>
+
+<div id="screen-paywall" style="display:none;">
+  <div class="pw-wrap">
+    <div class="pw-card">
+      <div class="pw-eyebrow">TablSide</div>
+      <div class="pw-title" id="pw-title">Join as a founding member</div>
+      <div class="pw-sub" id="pw-sub">Everything TablSide does today, for one simple price.</div>
+
+      <div id="pw-offer">
+        <div class="pw-price"><span class="pw-amount">$10</span> <span class="pw-per">per month</span></div>
+        <ul class="pw-list">
+          <li>Your own guest page, in your colors, fonts and words</li>
+          <li>A live queue on your phone, with an alert for every request</li>
+          <li>Floor plans with numbered tables</li>
+          <li>Printable table signage and QR codes</li>
+          <li>Stats on your nights, as a PDF</li>
+        </ul>
+        <div class="pw-founding">Founding members keep this price for as long as their subscription stays active.</div>
+        <div class="pw-seats" id="pw-seats" style="display:none;"></div>
+        <button class="btn btn-solid pw-btn" id="pw-subscribe-btn" type="button">Subscribe for $10 a month</button>
+        <div class="pw-note" id="pw-note" style="display:none;"></div>
+        <div class="pw-fine">Cancel any time from the Billing window. Payments are handled securely by Stripe.</div>
+      </div>
+
+      <div id="pw-full" style="display:none;">
+        <div class="pw-status-title">Founding seats are full</div>
+        <div class="pw-text" id="pw-full-text"></div>
+      </div>
+
+      <div id="pw-confirming" style="display:none;">
+        <div class="pw-pulse"></div>
+        <div class="pw-status-title">Confirming your payment</div>
+        <div class="pw-text">This usually takes a few seconds. This page will open by itself.</div>
+      </div>
+
+      <div id="pw-slow" style="display:none;">
+        <div class="pw-status-title">This is taking longer than usual</div>
+        <div class="pw-text" id="pw-slow-text"></div>
+        <button class="btn btn-outline" id="pw-refresh-btn" type="button">Refresh</button>
+      </div>
+    </div>
+    <div class="pw-account">Signed in as <span id="pw-email"></span>. <a href="#" id="pw-signout-link">Sign out</a></div>
+  </div>
+</div>
+
+<div id="screen-problem" style="display:none;">
+  <div class="pw-wrap">
+    <div class="pw-card">
+      <div class="pw-status-title">We could not check your account</div>
+      <div class="pw-text">Check your connection and try again.</div>
+      <button class="btn btn-solid pw-btn" id="problem-retry-btn" type="button">Try again</button>
+    </div>
+    <div class="pw-account"><a href="#" id="problem-signout-link">Sign out</a></div>
+  </div>
+</div>
+
 <!-- SCREEN: HOME -->
-<div id="screen-home">
+<div id="screen-home" style="display:none;">
   <div class="home-wrap">
     <div class="home-header">
       <div class="home-title">My Venues</div>
@@ -610,6 +725,26 @@
   </div>
 </div>
 
+<!-- MODAL: Billing -->
+<div class="modal-overlay" id="billing-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Billing</div>
+      <button class="modal-close" id="billing-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-label">Plan</div>
+      <div class="bill-value" id="billing-plan"></div>
+      <div class="form-label">Status</div>
+      <div class="bill-value" id="billing-status"></div>
+      <div class="bill-date" id="billing-date"></div>
+      <div class="bill-note" id="billing-note" style="display:none;"></div>
+      <button class="btn btn-solid" id="billing-manage-btn" type="button">Manage billing</button>
+      <div class="error-msg" id="billing-error" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Floor Plan Wizard -->
 <div class="modal-overlay" id="floorplan-wizard-modal">
   <div class="modal" style="max-width:1100px;width:95vw;height:90vh;max-height:90vh;display:flex;flex-direction:column;">
@@ -628,7 +763,7 @@
   // A tab left open keeps running the version it loaded. Every delivery gets a new BUILD here and in
   // version.json, and this checks now and then whether a newer one is out. It only offers a refresh:
   // it never reloads by itself, so a show is never interrupted.
-  var BUILD = '2026-10-08-1';
+  var BUILD = '2026-10-09-1';
   (function() {
     var shown = false, lastCheck = 0, snoozeUntil = 0;
     var stamp = document.getElementById('build-stamp'); if (stamp) stamp.textContent = BUILD;
@@ -2458,14 +2593,216 @@
     }
   });
 
+  // ─── BILLING: who may use the dashboard ─────────────────────────────────────
+  // billing/{your id} is written only by the billing functions. Its status decides what
+  // you see: an unlocked account gets the dashboard, a locked one gets the Subscribe
+  // screen. (The security rules enforce the same lock on the server; this is the
+  // part people see.)
+  var ACCESS_STATUSES = ['active', 'trialing', 'past_due', 'comped'];
+  var CONTACT_EMAIL = '';   // your support address; when set, a "Contact us" link appears in the "seats are full" and "taking too long" messages
+  var billing = null, billingWatch = null, billingWatchdog = null, venuesStarted = false;
+  var paywallNote = null, seatInfo = null, seatsAsked = false, checkoutBusy = false;
+  var confirming = false, confirmStart = 0, confirmTimer = null;
+
+  function hasAccess(b) { return !!b && ACCESS_STATUSES.indexOf(b.status) > -1; }
+  function callBilling(name) { return firebase.app().functions('us-central1').httpsCallable(name)(); }
+  function bShow(id, on) { document.getElementById(id).style.display = on ? '' : 'none'; }
+  function setTextWithContact(id, text, lead) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    if (CONTACT_EMAIL) {
+      el.appendChild(document.createTextNode(' ' + lead + ' '));
+      var a = document.createElement('a');
+      a.href = 'mailto:' + CONTACT_EMAIL; a.textContent = 'Contact us';
+      el.appendChild(a);
+    }
+  }
+
+  // Stripe sends people back here with ?billing=success or ?billing=cancelled
+  function takeReturnParam() {
+    try {
+      var p = new URLSearchParams(window.location.search), r = p.get('billing');
+      if (r) {
+        p.delete('billing');
+        var q = p.toString();
+        window.history.replaceState(null, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
+      }
+      return r;
+    } catch (e) { return null; }
+  }
+
+  function startBilling(user) {
+    var ret = takeReturnParam();
+    if (ret === 'success') { confirming = true; confirmStart = Date.now(); startConfirmTimer(); }
+    if (ret === 'cancelled') paywallNote = { text: 'No charge was made. You can subscribe whenever you are ready.', error: false };
+    document.getElementById('pw-email').textContent = user.email || '';
+    clearTimeout(billingWatchdog);
+    billingWatchdog = setTimeout(showBillingProblem, 10000);
+    if (billingWatch) billingWatch();
+    billingWatch = db.collection('billing').doc(user.uid).onSnapshot(function(snap) {
+      clearTimeout(billingWatchdog);
+      billing = snap.exists ? snap.data() : {};
+      applyBilling();
+    }, function() { clearTimeout(billingWatchdog); showBillingProblem(); });
+  }
+
+  function showBillingProblem() {
+    if (billing !== null) return;     // we already know the answer; a later hiccup should not lock anyone out
+    bShow('screen-home', false); bShow('screen-workspace', false); bShow('screen-paywall', false);
+    bShow('screen-problem', true);
+  }
+
+  function applyBilling() {
+    var ok = hasAccess(billing);
+    bShow('screen-problem', false);
+    bShow('billing-link', ok);
+    var banner = document.getElementById('billing-banner');
+    banner.style.display = (ok && billing.status === 'past_due') ? 'flex' : 'none';
+    if (ok) {
+      stopConfirming();
+      bShow('screen-paywall', false);
+      if (!venuesStarted) { venuesStarted = true; loadVenues(); }
+      var inWorkspace = !!workspaceSlug;
+      document.getElementById('screen-home').style.display = inWorkspace ? 'none' : 'block';
+      document.getElementById('screen-workspace').style.display = inWorkspace ? 'block' : 'none';
+      renderBillingModal();
+    } else {
+      workspaceSlug = null;
+      document.querySelectorAll('.modal-overlay.open').forEach(function(m) { m.classList.remove('open'); });
+      bShow('screen-home', false); bShow('screen-workspace', false);
+      renderPaywall();
+      bShow('screen-paywall', true);
+    }
+  }
+
+  function startConfirmTimer() {
+    clearInterval(confirmTimer);
+    confirmTimer = setInterval(function() { if (confirming && !hasAccess(billing)) renderPaywall(); else stopConfirming(); }, 1000);
+  }
+  function stopConfirming() { confirming = false; clearInterval(confirmTimer); }
+
+  function renderPaywall() {
+    var returning = !!(billing && billing.stripeSubscriptionId);   // had a subscription once
+    document.getElementById('pw-title').textContent = returning ? 'Welcome back' : 'Join as a founding member';
+    document.getElementById('pw-sub').textContent = returning
+      ? 'Your venues are saved. Subscribe again to pick up where you left off.'
+      : 'Everything TablSide does today, for one simple price.';
+    var full = !!(seatInfo && seatInfo.open <= 0);
+    var state = confirming ? ((Date.now() - confirmStart > 45000) ? 'slow' : 'confirming') : (full ? 'full' : 'offer');
+    bShow('pw-title', state === 'offer' || state === 'full');
+    bShow('pw-sub', state === 'offer' || state === 'full');
+    bShow('pw-offer', state === 'offer');
+    bShow('pw-full', state === 'full');
+    bShow('pw-confirming', state === 'confirming');
+    bShow('pw-slow', state === 'slow');
+    if (state === 'full') setTextWithContact('pw-full-text', 'Every founding seat is taken right now. Please check back soon.', 'Questions?');
+    if (state === 'slow') setTextWithContact('pw-slow-text', 'If Stripe showed you a confirmation, your payment went through. Refresh in a minute and your account should open.', 'If it still does not,');
+    var seats = document.getElementById('pw-seats');
+    if (state === 'offer' && seatInfo && seatInfo.cap > 0) {
+      seats.textContent = seatInfo.open + ' of ' + seatInfo.cap + ' founding seats left';
+      seats.style.display = '';
+    } else { seats.style.display = 'none'; }
+    var note = document.getElementById('pw-note');
+    if (paywallNote && state === 'offer') {
+      note.textContent = paywallNote.text; note.className = 'pw-note' + (paywallNote.error ? ' error' : ''); note.style.display = '';
+    } else { note.style.display = 'none'; }
+    if (!seatsAsked && state !== 'confirming') {
+      seatsAsked = true;
+      callBilling('getFoundingSeats').then(function(r) { seatInfo = r.data; renderPaywall(); }).catch(function() {});
+    }
+  }
+
+  document.getElementById('pw-subscribe-btn').addEventListener('click', function() {
+    if (checkoutBusy) return;
+    var btn = this;
+    checkoutBusy = true; btn.disabled = true; btn.textContent = 'Taking you to checkout...';
+    paywallNote = null; renderPaywall();
+    callBilling('createCheckoutSession').then(function(r) {
+      window.location.href = r.data.url;       // the button stays switched off while the browser leaves
+    }).catch(function(e) {
+      checkoutBusy = false; btn.disabled = false; btn.textContent = 'Subscribe for $10 a month';
+      var code = e && e.message;
+      if (code === 'founding-full') {
+        seatInfo = { cap: seatInfo ? seatInfo.cap : 0, taken: seatInfo ? seatInfo.cap : 0, open: 0 };
+      } else if (code === 'already-subscribed') {
+        paywallNote = { text: 'You already have access. Your account should open in a moment.', error: false };
+      } else {
+        paywallNote = { text: 'We could not reach our payment provider. Please try again in a moment.', error: true };
+      }
+      renderPaywall();
+    });
+  });
+  document.getElementById('pw-refresh-btn').addEventListener('click', function() { window.location.reload(); });
+  document.getElementById('problem-retry-btn').addEventListener('click', function() { window.location.reload(); });
+  ['pw-signout-link', 'problem-signout-link'].forEach(function(id) {
+    document.getElementById(id).addEventListener('click', function(e) { e.preventDefault(); firebase.auth().signOut(); });
+  });
+
+  // Stripe's own page for updating a card or cancelling
+  function openPortal(onError) {
+    callBilling('createPortalSession').then(function(r) {
+      window.location.href = r.data.url;
+    }).catch(function(e) {
+      onError((e && e.message) === 'no-customer'
+        ? 'There is no payment on file to manage yet.'
+        : 'We could not open the billing page. Please try again in a moment.');
+    });
+  }
+  function fmtBillingDate(ts) {
+    var d = ts && typeof ts.toDate === 'function' ? ts.toDate() : (ts ? new Date(ts) : null);
+    return d && !isNaN(d) ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+  }
+  function renderBillingModal() {
+    var b = billing || {};
+    var comped = b.status === 'comped';
+    var statusEl = document.getElementById('billing-status');
+    var when = fmtBillingDate(b.currentPeriodEnd);
+    var note = document.getElementById('billing-note');
+    document.getElementById('billing-plan').textContent = comped ? 'Free beta access' : (b.plan === 'founding' ? 'Founding Member, $10 per month' : 'TablSide');
+    statusEl.className = 'bill-value';
+    note.style.display = 'none';
+    var dateText = '';
+    if (comped) {
+      statusEl.textContent = 'Active';
+      note.textContent = 'You have free access while TablSide is in beta. There is nothing to pay.'; note.style.display = '';
+    } else if (b.status === 'past_due') {
+      statusEl.textContent = 'Payment failed'; statusEl.className = 'bill-value warn';
+      note.textContent = 'Your last payment did not go through. Update your card to keep your access.'; note.style.display = '';
+      dateText = when ? 'Renewal date: ' + when : '';
+    } else if (b.status === 'trialing') {
+      statusEl.textContent = 'Trial';
+      dateText = when ? 'Trial ends on ' + when : '';
+    } else {
+      statusEl.textContent = 'Active';
+      dateText = b.cancelAtPeriodEnd
+        ? (when ? 'Ends on ' + when + '. You keep full access until then.' : 'Your subscription will end at the close of this billing period.')
+        : (when ? 'Renews on ' + when : '');
+    }
+    document.getElementById('billing-date').textContent = dateText;
+    bShow('billing-date', !!dateText);
+    bShow('billing-manage-btn', !comped);
+  }
+  document.getElementById('billing-link').addEventListener('click', function() {
+    renderBillingModal(); bShow('billing-error', false); openModal('billing-modal');
+  });
+  document.getElementById('billing-modal-close').addEventListener('click', function() { closeModal('billing-modal'); });
+  document.getElementById('billing-manage-btn').addEventListener('click', function() {
+    var err = document.getElementById('billing-error'); err.style.display = 'none';
+    openPortal(function(msg) { err.textContent = msg; err.style.display = ''; });
+  });
+  document.getElementById('billing-banner-btn').addEventListener('click', function() {
+    var text = document.getElementById('billing-banner-text'), original = text.textContent;
+    openPortal(function(msg) { text.textContent = msg; setTimeout(function() { text.textContent = original; }, 6000); });
+  });
+
   // ─── SIGN-IN GATE ───────────────────────────────────────────────────────────
   document.getElementById('signout-btn').addEventListener('click', function() { firebase.auth().signOut(); });
   firebase.auth().onAuthStateChanged(function(user) {
     if (!user) { window.location.replace('login.html?next=dashboard.html'); return; }
     currentUser = user;
     document.body.classList.remove('pending');
-    loadVenues();
     loadPerformerProfile();
+    startBilling(user);       // the dashboard itself opens once we know the account has access
   });
 </script>
 </body>
